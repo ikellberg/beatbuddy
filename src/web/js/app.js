@@ -1,4 +1,5 @@
 import { MetronomeEngine } from './MetronomeEngine.js'
+import { SensorManager } from './SensorManager.js'
 
 // Ключи localStorage
 const SETTINGS_KEY = 'beatBuddySettings'
@@ -25,6 +26,9 @@ let metronomeStatus
 
 // Метроном
 let metronome = null
+
+// Сенсор ударов
+let sensor = null
 
 /**
  * Инициализация приложения
@@ -141,7 +145,7 @@ function onDevModeChange() {
 /**
  * Обработчик клика на кнопку Старт
  */
-function onStartClick() {
+async function onStartClick() {
   const settings = {
     bpm: parseInt(bpmSlider.value, 10),
     duration: parseInt(durationInput.value, 10),
@@ -162,6 +166,23 @@ function onStartClick() {
   metronomeStatus.textContent = `Метроном: ▶️ Работает (${settings.bpm} BPM)`
 
   console.log(`[App] Метроном запущен: BPM=${settings.bpm}, интервал=${(60/settings.bpm).toFixed(3)}s`)
+
+  // Создать и подключить сенсор
+  const sensorType = SensorManager.getTypeFromSettings(settings.devMode)
+  sensor = SensorManager.create(sensorType)
+
+  sensor.onHit((event) => {
+    console.log(`[App] Hit received: ${event.timestamp.toFixed(2)}ms from ${event.source}`)
+    // TODO US-005: передать событие в RhythmAnalyzer
+  })
+
+  try {
+    await sensor.connect()
+    console.log('[App] Sensor connected:', sensor.getStatus())
+  } catch (error) {
+    console.error('[App] Failed to connect sensor:', error)
+  }
+
   console.log('[App] Session Screen активирован')
 }
 
@@ -178,6 +199,12 @@ function onStopClick() {
     // Остановить метроном
     metronome.stop()
     metronome = null
+  }
+
+  // Отключить сенсор
+  if (sensor) {
+    sensor.disconnect()
+    sensor = null
   }
 
   // Переключить экраны: показать Setup, скрыть Session

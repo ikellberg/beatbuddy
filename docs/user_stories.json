@@ -59,7 +59,7 @@
         "Модуль логирует все события подключения"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "technicalNotes": "Модуль SensorManager.js с двумя реализациями: KeyboardSensor, MicrophoneSensor. Интерфейс: connect(), disconnect(), onHit(callback), getStatus(). Конфиг: переключение через localStorage или чекбокс Dev Mode",
       "relatedFiles": ["src/web/js/SensorManager.js", "src/web/js/sensors/KeyboardSensor.js"]
     },
@@ -79,7 +79,7 @@
         "Проблема подключения с 5-й попытки решена (изолирован в модуль)",
         "Тесты на реальном датчике"
       ],
-      "priority": 4,
+      "priority": 8,
       "passes": false,
       "technicalNotes": "КРИТИЧНО: Изолировать логику подключения в SensorManager.js. Проблема: в нашем приложении датчик работал только с 5-й попытки, хотя в системе и на сторонних сайтах — с первого раза. Порог срабатывания TBD (определим при тестировании). Модуль должен логировать все попытки подключения",
       "relatedFiles": ["src/web/js/SensorManager.js", "src/web/js/sensors/MicrophoneSensor.js"]
@@ -98,7 +98,7 @@
         "Статистика накапливается в течение занятия",
         "Тесты на граничные случаи (удар точно в бит, удар с отклонением)"
       ],
-      "priority": 5,
+      "priority": 4,
       "passes": false,
       "technicalNotes": "Модуль RhythmAnalyzer.js. Методы: analyzeHit(hitTime, beatTime), getAccuracy(), reset(). Логика: |hitTime - beatTime| <= threshold → попадание",
       "relatedFiles": ["src/web/js/RhythmAnalyzer.js"]
@@ -118,7 +118,7 @@
         "Понятна детям 3-15 лет (проверено с тестерами)",
         "Плавная, без лагов"
       ],
-      "priority": 6,
+      "priority": 5,
       "passes": false,
       "technicalNotes": "Canvas или CSS animations. Подписка на события из RhythmAnalyzer. Простая анимация: круг растёт/сжимается в такт метроному",
       "relatedFiles": ["src/web/js/Animator.js", "src/web/styles/main.css"]
@@ -137,7 +137,7 @@
         "UI читаемый и яркий",
         "Возврат в меню работает"
       ],
-      "priority": 7,
+      "priority": 6,
       "passes": false,
       "technicalNotes": "Простой HTML/CSS экран. Данные берутся из RhythmAnalyzer",
       "relatedFiles": ["src/web/index.html", "src/web/styles/main.css", "src/web/js/app.js"]
@@ -156,7 +156,7 @@
         "Автоматическое завершение по таймеру",
         "Все модули (метроном, датчик, анализ) синхронизированы"
       ],
-      "priority": 8,
+      "priority": 7,
       "passes": false,
       "technicalNotes": "Координация между MetronomeEngine, SensorManager, RhythmAnalyzer. Таймер через setInterval (некритично для точности). Переход между экранами: Setup → Session → Stats",
       "relatedFiles": ["src/web/js/app.js", "src/web/index.html"]
