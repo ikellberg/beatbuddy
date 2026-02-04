@@ -98,7 +98,7 @@
         "Статистика накапливается в течение занятия",
         "Тесты на граничные случаи (удар точно в бит, удар с отклонением)"
       ],
-      "priority": 4,
+      "priority": 5,
       "passes": false,
       "technicalNotes": "Модуль RhythmAnalyzer.js. Методы: analyzeHit(hitTime, beatTime), getAccuracy(), reset(). Логика: |hitTime - beatTime| <= threshold → попадание",
       "relatedFiles": ["src/web/js/RhythmAnalyzer.js"]
@@ -118,7 +118,7 @@
         "Понятна детям 3-15 лет (проверено с тестерами)",
         "Плавная, без лагов"
       ],
-      "priority": 5,
+      "priority": 4,
       "passes": false,
       "technicalNotes": "Canvas или CSS animations. Подписка на события из RhythmAnalyzer. Простая анимация: круг растёт/сжимается в такт метроному",
       "relatedFiles": ["src/web/js/Animator.js", "src/web/styles/main.css"]

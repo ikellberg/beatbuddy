@@ -1,5 +1,6 @@
 import { MetronomeEngine } from './MetronomeEngine.js'
 import { SensorManager } from './SensorManager.js'
+import { RhythmAnalyzer } from './RhythmAnalyzer.js'
 
 // Ключи localStorage
 const SETTINGS_KEY = 'beatBuddySettings'
@@ -29,6 +30,9 @@ let metronome = null
 
 // Сенсор ударов
 let sensor = null
+
+// Анализатор ритма
+let rhythmAnalyzer = null
 
 /**
  * Инициализация приложения
@@ -167,13 +171,37 @@ async function onStartClick() {
 
   console.log(`[App] Метроном запущен: BPM=${settings.bpm}, интервал=${(60/settings.bpm).toFixed(3)}s`)
 
+  // Создать анализатор ритма (учитываем задержку первого клика = 60/bpm)
+  const sessionStartTime = performance.now() / 1000
+  const firstBeatDelay = 60 / settings.bpm
+  rhythmAnalyzer = new RhythmAnalyzer(sessionStartTime + firstBeatDelay, settings.bpm, 100)
+
+  console.log(`[App] RhythmAnalyzer создан: startTime=${(sessionStartTime + firstBeatDelay).toFixed(3)}s, threshold=±100ms`)
+
   // Создать и подключить сенсор
   const sensorType = SensorManager.getTypeFromSettings(settings.devMode)
   sensor = SensorManager.create(sensorType)
 
   sensor.onHit((event) => {
     console.log(`[App] Hit received: ${event.timestamp.toFixed(2)}ms from ${event.source}`)
-    // TODO US-005: передать событие в RhythmAnalyzer
+
+    // Передать удар в анализатор
+    if (rhythmAnalyzer) {
+      const result = rhythmAnalyzer.recordHit(event.timestamp / 1000)
+
+      const statusIcon = result.isHit ? '✅ HIT' : '❌ MISS'
+      const deviationText = result.deviation >= 0
+        ? `+${result.deviation.toFixed(0)}ms`
+        : `${result.deviation.toFixed(0)}ms`
+
+      console.log(`[App] ${statusIcon} | beat=${result.beatNumber} | deviation=${deviationText}`)
+
+      // Логировать текущую статистику каждые 10 ударов
+      const stats = rhythmAnalyzer.getAccuracy()
+      if (stats.totalStrikes % 10 === 0) {
+        console.log(`[App] Stats: ${stats.accurateHits}/${stats.totalStrikes} (${stats.accuracyPercent}%)`)
+      }
+    }
   })
 
   try {
@@ -191,6 +219,13 @@ async function onStartClick() {
  */
 function onStopClick() {
   console.log('[App] Остановка занятия')
+
+  // Вывести финальную статистику ритма
+  if (rhythmAnalyzer) {
+    const stats = rhythmAnalyzer.getAccuracy()
+    console.log(`[App] Final accuracy: ${stats.accurateHits}/${stats.totalStrikes} (${stats.accuracyPercent}%)`)
+    rhythmAnalyzer = null
+  }
 
   // Вывести статистику метронома
   if (metronome) {
