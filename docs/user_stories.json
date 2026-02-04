@@ -39,9 +39,9 @@
         "Код в отдельном модуле (например, MetronomeEngine.js)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "technicalNotes": "Web Audio API: AudioContext, currentTime для scheduling. Запрещено использовать setTimeout/setInterval для тайминга. Модуль должен экспортировать: start(bpm), stop(), isPlaying()",
-      "relatedFiles": ["src/web/js/MetronomeEngine.js"]
+      "relatedFiles": ["src/web/js/MetronomeEngine.js", "src/web/js/app.js", "src/web/index.html", "src/web/styles/main.css"]
     },
     {
       "id": "US-003",

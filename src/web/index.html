@@ -34,9 +34,15 @@
     <button id="start-button" class="primary-button">Старт</button>
   </div>
 
-  <!-- Session Screen (заглушка для будущего) -->
+  <!-- Session Screen -->
   <div id="session-screen" style="display: none;">
-    <p>Экран занятия (US-002+)</p>
+    <h2>Занятие идёт</h2>
+
+    <div id="metronome-indicator" class="indicator">
+      <span id="metronome-status">Метроном: ⏸️ Остановлен</span>
+    </div>
+
+    <button id="stop-button" class="primary-button danger-button">Стоп</button>
   </div>
 
   <script type="module" src="js/app.js"></script>

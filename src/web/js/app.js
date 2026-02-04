@@ -1,3 +1,5 @@
+import { MetronomeEngine } from './MetronomeEngine.js'
+
 // Ключи localStorage
 const SETTINGS_KEY = 'beatBuddySettings'
 
@@ -15,16 +17,31 @@ let durationInput
 let devModeCheckbox
 let startButton
 
+// Session Screen
+let sessionScreen
+let setupScreen
+let stopButton
+let metronomeStatus
+
+// Метроном
+let metronome = null
+
 /**
  * Инициализация приложения
  */
 function init() {
-  // Получить элементы
+  // Получить элементы Setup Screen
   bpmSlider = document.getElementById('bpm-slider')
   bpmValue = document.getElementById('bpm-value')
   durationInput = document.getElementById('duration-input')
   devModeCheckbox = document.getElementById('dev-mode-checkbox')
   startButton = document.getElementById('start-button')
+
+  // Получить элементы Session Screen
+  sessionScreen = document.getElementById('session-screen')
+  setupScreen = document.getElementById('setup-screen')
+  stopButton = document.getElementById('stop-button')
+  metronomeStatus = document.getElementById('metronome-status')
 
   // Загрузить настройки
   loadSettings()
@@ -34,6 +51,7 @@ function init() {
   durationInput.addEventListener('change', onDurationChange)
   devModeCheckbox.addEventListener('change', onDevModeChange)
   startButton.addEventListener('click', onStartClick)
+  stopButton.addEventListener('click', onStopClick)
 
   console.log('[App] Инициализация завершена')
 }
@@ -132,8 +150,41 @@ function onStartClick() {
 
   console.log('[App] Старт занятия с настройками:', settings)
 
-  // TODO (US-002): Запустить метроном, датчик, перейти на Session Screen
-  alert(`Занятие запущено!\nBPM: ${settings.bpm}\nВремя: ${settings.duration} мин\nDev Mode: ${settings.devMode}`)
+  // Переключить экраны: скрыть Setup, показать Session
+  setupScreen.style.display = 'none'
+  sessionScreen.style.display = 'block'
+
+  // Создать и запустить метроном
+  metronome = new MetronomeEngine()
+  metronome.start(settings.bpm)
+
+  // Обновить индикатор статуса
+  metronomeStatus.textContent = `Метроном: ▶️ Работает (${settings.bpm} BPM)`
+
+  console.log(`[App] Метроном запущен: BPM=${settings.bpm}, интервал=${(60/settings.bpm).toFixed(3)}s`)
+  console.log('[App] Session Screen активирован')
+}
+
+/**
+ * Обработчик клика на кнопку Стоп
+ */
+function onStopClick() {
+  console.log('[App] Остановка занятия')
+
+  // Вывести статистику метронома
+  if (metronome) {
+    console.log(`[App] Total clicks: ${metronome.clickCount}`)
+
+    // Остановить метроном
+    metronome.stop()
+    metronome = null
+  }
+
+  // Переключить экраны: показать Setup, скрыть Session
+  sessionScreen.style.display = 'none'
+  setupScreen.style.display = 'block'
+
+  console.log('[App] Возврат в Setup Screen')
 }
 
 // Запуск приложения

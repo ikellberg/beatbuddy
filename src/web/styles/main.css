@@ -94,3 +94,33 @@ input[type="checkbox"] {
 .primary-button:active {
   transform: scale(0.98);
 }
+
+/* Session Screen */
+#session-screen {
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+#session-screen h2 {
+  font-size: 36px;
+  color: var(--primary-color);
+  margin-bottom: 30px;
+}
+
+.indicator {
+  font-size: 24px;
+  padding: 20px;
+  margin: 30px 0;
+  border-radius: 12px;
+  background-color: #f0f0f0;
+}
+
+/* Кнопка Stop (красная) */
+.danger-button {
+  background-color: #f44336;
+}
+
+.danger-button:hover {
+  background-color: #d32f2f;
+}
