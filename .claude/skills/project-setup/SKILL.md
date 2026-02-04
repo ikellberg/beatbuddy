@@ -22,7 +22,6 @@
    ├── prd.md                 # Product Requirements Document
    ├── user_stories.json      # User Stories (source of truth, формат Ralph)
    └── plans/                 # Планы для каждой story
-       └── README.md
    project_state.md           # Human-readable state
    ```
 
@@ -38,9 +37,9 @@
    - Процесс работы с Human-in-the-Loop checkpoints
    - Структура проекта
 
-5. **Настраивает docs/plans/:**
-   - README.md с naming convention
-   - Инструкции по созданию планов для каждой story
+5. **Создаёт директорию docs/plans/:**
+   - Планы будут сохраняться в формате `US-XXX-название.md`
+   - Директория создаётся автоматически при первом плане
 
 ## Процесс выполнения
 
@@ -74,7 +73,7 @@
 ### Шаг 3: Создание структуры
 
 1. **docs/user_stories.json** — JSON с user stories
-2. **docs/plans/README.md** — Инструкции по планам
+2. **docs/plans/** — Директория для планов (создаётся автоматически)
 3. **project_state.md** — Human-readable state с:
    - Описанием проекта
    - Current Sprint (пусто)
@@ -166,7 +165,7 @@ Claude:
 4. PRD создан. Извлекаю user stories...
 5. Создаю структуру управления проектом...
 6. ✓ docs/user_stories.json (8 stories)
-7. ✓ docs/plans/README.md
+7. ✓ docs/plans/ (директория создана)
 8. ✓ project_state.md
 
 Система управления проектом настроена!
