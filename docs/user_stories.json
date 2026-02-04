@@ -19,7 +19,7 @@
         "Код соответствует CLAUDE.md (типы, guard clauses)"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "technicalNotes": "Чистый HTML/CSS/JS, localStorage для сохранения настроек между сессиями",
       "relatedFiles": ["src/web/index.html", "src/web/styles/main.css", "src/web/js/app.js"]
     },
