@@ -40,9 +40,10 @@
   - Анимация: зелёный = попадание, красный = промах
   - Priority: 4 | Complexity: Medium
 
-- [ ] **US-005:** Анализ точности попадания в ритм
+- [x] **US-005:** Анализ точности попадания в ритм ✅
   - Определение попадания/промаха, расчёт статистики
   - Priority: 5 | Complexity: Medium
+  - Completed: 2026-02-04
 
 - [ ] **US-007:** Экран статистики после занятия
   - Показ результатов: процент точности, количество ударов
@@ -84,6 +85,13 @@
   - API: connect(), disconnect(), onHit(callback), getStatus()
   - Интеграция в app.js
   - Файлы: `src/web/js/SensorManager.js`, `src/web/js/sensors/KeyboardSensor.js`, `src/web/js/app.js`
+
+- [x] **US-005:** Анализ точности попадания в ритм (2026-02-04)
+  - RhythmAnalyzer.js — определение попадания/промаха по порогу ±100ms
+  - Вычисление времени битов по формуле (без изменения MetronomeEngine)
+  - Статистика: totalStrikes, accurateHits, misses, accuracyPercent
+  - Интеграция в app.js с логированием результатов
+  - Файлы: `src/web/js/RhythmAnalyzer.js`, `src/web/js/app.js`
 
 ---
 

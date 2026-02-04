@@ -99,9 +99,9 @@
         "Тесты на граничные случаи (удар точно в бит, удар с отклонением)"
       ],
       "priority": 5,
-      "passes": false,
-      "technicalNotes": "Модуль RhythmAnalyzer.js. Методы: analyzeHit(hitTime, beatTime), getAccuracy(), reset(). Логика: |hitTime - beatTime| <= threshold → попадание",
-      "relatedFiles": ["src/web/js/RhythmAnalyzer.js"]
+      "passes": true,
+      "technicalNotes": "Модуль RhythmAnalyzer.js. Методы: recordHit(hitTime), getAccuracy(), reset(). Логика: |hitTime - expectedBeatTime| <= threshold → попадание. Порог ±100ms подтверждён.",
+      "relatedFiles": ["src/web/js/RhythmAnalyzer.js", "src/web/js/app.js"]
     },
     {
       "id": "US-006",
