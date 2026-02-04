@@ -1,6 +1,7 @@
 import { MetronomeEngine } from './MetronomeEngine.js'
 import { SensorManager } from './SensorManager.js'
 import { RhythmAnalyzer } from './RhythmAnalyzer.js'
+import { Animator } from './Animator.js'
 
 // Ключи localStorage
 const SETTINGS_KEY = 'beatBuddySettings'
@@ -33,6 +34,9 @@ let sensor = null
 
 // Анализатор ритма
 let rhythmAnalyzer = null
+
+// Аниматор
+let animator = null
 
 /**
  * Инициализация приложения
@@ -178,6 +182,16 @@ async function onStartClick() {
 
   console.log(`[App] RhythmAnalyzer создан: startTime=${(sessionStartTime + firstBeatDelay).toFixed(3)}s, threshold=±100ms`)
 
+  // Создать и запустить аниматор
+  const canvas = document.getElementById('rhythm-canvas')
+  if (!canvas) {
+    console.error('[App] Canvas не найден')
+    return
+  }
+  animator = new Animator(canvas, settings.bpm)
+  animator.start()
+  console.log('[App] Animator запущен')
+
   // Создать и подключить сенсор
   const sensorType = SensorManager.getTypeFromSettings(settings.devMode)
   sensor = SensorManager.create(sensorType)
@@ -195,6 +209,11 @@ async function onStartClick() {
         : `${result.deviation.toFixed(0)}ms`
 
       console.log(`[App] ${statusIcon} | beat=${result.beatNumber} | deviation=${deviationText}`)
+
+      // Передать результат в аниматор
+      if (animator) {
+        animator.onHit(result)
+      }
 
       // Логировать текущую статистику каждые 10 ударов
       const stats = rhythmAnalyzer.getAccuracy()
@@ -225,6 +244,12 @@ function onStopClick() {
     const stats = rhythmAnalyzer.getAccuracy()
     console.log(`[App] Final accuracy: ${stats.accurateHits}/${stats.totalStrikes} (${stats.accuracyPercent}%)`)
     rhythmAnalyzer = null
+  }
+
+  // Остановить аниматор
+  if (animator) {
+    animator.stop()
+    animator = null
   }
 
   // Вывести статистику метронома

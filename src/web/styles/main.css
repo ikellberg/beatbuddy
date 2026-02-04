@@ -124,3 +124,11 @@ input[type="checkbox"] {
 .danger-button:hover {
   background-color: #d32f2f;
 }
+
+/* Canvas для анимации ритма */
+#rhythm-canvas {
+  display: block;
+  width: 100%;
+  height: 400px;
+  margin-bottom: 20px;
+}
