@@ -1,180 +1,95 @@
-import { MetronomeEngine } from './MetronomeEngine.js'
-import { SensorManager } from './SensorManager.js'
-import { RhythmAnalyzer } from './RhythmAnalyzer.js'
-import { Animator } from './Animator.js'
+# План US-008: Управление занятием (таймер + обратный отсчёт)
 
-// Ключи localStorage
-const SETTINGS_KEY = 'beatBuddySettings'
+## Что нужно сделать
 
-// Настройки по умолчанию
-const DEFAULT_SETTINGS = {
-  bpm: 120,
-  duration: 5,
-  devMode: false
+US-008 требует:
+1. ✅ Кнопка Старт запускает метроном, датчик и таймер — **уже есть**
+2. ✅ Кнопка Стоп останавливает всё и показывает статистику — **уже есть**
+3. ❌ **Таймер показывает оставшееся время** — нужно добавить
+4. ❌ **По истечении времени автоматически переход к статистике** — нужно добавить
+5. ❌ **Обратный отсчёт 3-2-1 перед началом** — нужно добавить (запрос пользователя)
+
+## Текущая проблема
+
+Сейчас метроном начинает бить сразу после нажатия "Старт". Ребёнок не успевает подготовиться и пропускает первые удары.
+
+---
+
+## План реализации
+
+### 1. Добавить элемент таймера в HTML
+
+**Файл:** `src/web/index.html`
+
+**Место вставки:** Внутри `#session-screen`, после `<canvas>`, перед `<h2>`:
+
+```html
+<!-- Session Screen -->
+<div id="session-screen" style="display: none;">
+  <canvas id="rhythm-canvas" width="800" height="400"></canvas>
+  <div id="timer-display" class="timer"></div>  <!-- ДОБАВИТЬ (без начального значения) -->
+  <h2>Занятие идёт</h2>
+  ...
+</div>
+```
+
+**Примечание:** Начальное значение не указываем — оно будет установлено в коде при показе экрана.
+
+---
+
+### 2. Добавить стили для таймера
+
+**Файл:** `src/web/styles/main.css`
+
+```css
+/* Таймер на Session Screen */
+.timer {
+  font-size: 96px;
+  font-weight: bold;
+  color: var(--secondary-color);
+  text-align: center;
+  margin: 20px 0;
 }
+```
 
-// Элементы UI
-let bpmSlider
-let bpmValue
-let durationInput
-let devModeCheckbox
-let startButton
+---
 
-// Session Screen
-let sessionScreen
-let setupScreen
-let stopButton
-let metronomeStatus
+### 3. Реализовать логику в app.js
 
-// Метроном
-let metronome = null
+**Файл:** `src/web/js/app.js`
 
-// Сенсор ударов
-let sensor = null
+#### 3.1 Новые переменные (в начале файла, после существующих)
 
-// Анализатор ритма
-let rhythmAnalyzer = null
-
-// Аниматор
-let animator = null
-
-// Stats Screen
-let statsScreen = null
-let statsAccuracy = null
-let statsHits = null
-let statsDuration = null
-let sessionStartTimestamp = null
-
+```js
 // Таймер занятия
 let timerDisplay = null
 let sessionTimerInterval = null
 let sessionDurationMs = 0
-let countdownInterval = null
-let countdownAborted = false
-let isStopping = false
+let countdownInterval = null  // Для возможности прерывания отсчёта
+let countdownAborted = false  // Флаг для прерывания Promise
+let isStopping = false  // Защита от повторных вызовов onStopClick()
+```
 
-/**
- * Инициализация приложения
- */
+#### 3.2 Инициализация в init()
+
+Добавить получение элемента таймера:
+
+```js
 function init() {
-  // Получить элементы Setup Screen
-  bpmSlider = document.getElementById('bpm-slider')
-  bpmValue = document.getElementById('bpm-value')
-  durationInput = document.getElementById('duration-input')
-  devModeCheckbox = document.getElementById('dev-mode-checkbox')
-  startButton = document.getElementById('start-button')
-
-  // Получить элементы Session Screen
-  sessionScreen = document.getElementById('session-screen')
-  setupScreen = document.getElementById('setup-screen')
-  stopButton = document.getElementById('stop-button')
-  metronomeStatus = document.getElementById('metronome-status')
-
-  // Получить элементы Stats Screen
-  statsScreen = document.getElementById('stats-screen')
-  statsAccuracy = document.getElementById('stats-accuracy')
-  statsHits = document.getElementById('stats-hits')
-  statsDuration = document.getElementById('stats-duration')
-  document.getElementById('new-session-button').addEventListener('click', onNewSessionClick)
+  // ... существующий код ...
 
   // Получить элемент таймера
   timerDisplay = document.getElementById('timer-display')
 
-  // Загрузить настройки
-  loadSettings()
-
-  // Установить обработчики событий
-  bpmSlider.addEventListener('input', onBpmChange)
-  durationInput.addEventListener('change', onDurationChange)
-  devModeCheckbox.addEventListener('change', onDevModeChange)
-  startButton.addEventListener('click', onStartClick)
-  stopButton.addEventListener('click', onStopClick)
-
-  console.log('[App] Инициализация завершена')
+  // ... остальной код ...
 }
+```
 
-/**
- * Загрузить настройки из localStorage
- */
-function loadSettings() {
-  let settings = DEFAULT_SETTINGS
+#### 3.3 Функция countdown() с возможностью прерывания
 
-  try {
-    const savedSettings = localStorage.getItem(SETTINGS_KEY)
-    if (savedSettings) {
-      settings = JSON.parse(savedSettings)
-    }
-  } catch (error) {
-    console.warn('[App] Ошибка загрузки настроек:', error)
-    settings = DEFAULT_SETTINGS
-  }
+**ВАЖНО:** Promise должен проверять флаг `countdownAborted` на каждом тике интервала, иначе после вызова `abortCountdown()` Promise всё равно resolve(true) через секунду, и занятие запустится даже после прерывания.
 
-  // Применить настройки к UI
-  bpmSlider.value = settings.bpm
-  bpmValue.textContent = settings.bpm
-  durationInput.value = settings.duration
-  devModeCheckbox.checked = settings.devMode
-
-  console.log('[App] Настройки загружены:', settings)
-}
-
-/**
- * Сохранить настройки в localStorage
- */
-function saveSettings() {
-  const settings = {
-    bpm: parseInt(bpmSlider.value, 10),
-    duration: parseInt(durationInput.value, 10),
-    devMode: devModeCheckbox.checked
-  }
-
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
-  console.log('[App] Настройки сохранены:', settings)
-}
-
-/**
- * Обработчик изменения BPM
- */
-function onBpmChange() {
-  const bpm = parseInt(bpmSlider.value, 10)
-
-  // Валидация
-  if (bpm < 40 || bpm > 200) {
-    console.warn(`[App] BPM вне диапазона: ${bpm}`)
-    return
-  }
-
-  bpmValue.textContent = bpm
-  saveSettings()
-}
-
-/**
- * Обработчик изменения времени занятия
- */
-function onDurationChange() {
-  const duration = parseInt(durationInput.value, 10)
-
-  // Валидация
-  if (duration < 1) {
-    console.warn(`[App] Время занятия < 1: ${duration}`)
-    durationInput.value = 1
-  }
-
-  if (duration > 60) {
-    console.warn(`[App] Время занятия > 60: ${duration}`)
-    durationInput.value = 60
-  }
-
-  saveSettings()
-}
-
-/**
- * Обработчик изменения Dev Mode
- */
-function onDevModeChange() {
-  saveSettings()
-}
-
+```js
 /**
  * Обратный отсчёт перед началом занятия
  * @param {number} seconds - количество секунд
@@ -182,15 +97,16 @@ function onDevModeChange() {
  */
 function countdown(seconds) {
   return new Promise((resolve) => {
-    countdownAborted = false
+    countdownAborted = false  // Сбросить флаг
     let remaining = seconds
-    timerDisplay.textContent = remaining
+    timerDisplay.textContent = remaining  // Показать "3" сразу
 
     countdownInterval = setInterval(() => {
+      // Проверить флаг прерывания ПЕРЕД обработкой тика
       if (countdownAborted) {
         clearInterval(countdownInterval)
         countdownInterval = null
-        resolve(false)
+        resolve(false)  // Прерван
         return
       }
 
@@ -198,7 +114,7 @@ function countdown(seconds) {
       if (remaining <= 0) {
         clearInterval(countdownInterval)
         countdownInterval = null
-        resolve(true)
+        resolve(true)  // Завершился успешно
       } else {
         timerDisplay.textContent = remaining
       }
@@ -211,12 +127,16 @@ function countdown(seconds) {
  */
 function abortCountdown() {
   if (countdownInterval) {
-    countdownAborted = true
+    countdownAborted = true  // Установить флаг для прерывания Promise
     clearInterval(countdownInterval)
     countdownInterval = null
   }
 }
+```
 
+#### 3.4 Функции для таймера занятия
+
+```js
 /**
  * Обновить отображение таймера
  * @param {number} ms - оставшееся время в миллисекундах
@@ -234,22 +154,27 @@ function updateTimerDisplay(ms) {
  * Обработчик тика таймера (каждую секунду)
  */
 function onTimerTick() {
+  // Защита от вызова во время остановки
   if (isStopping) return
 
   const elapsedMs = performance.now() - sessionStartTimestamp
   const remainingMs = sessionDurationMs - elapsedMs
 
   if (remainingMs <= 0) {
+    // Время вышло — автоматический стоп
     onStopClick()
     return
   }
 
   updateTimerDisplay(remainingMs)
 }
+```
 
-/**
- * Обработчик клика на кнопку Старт
- */
+#### 3.5 Изменения в onStartClick()
+
+**Полный код функции с явным перечислением всех шагов:**
+
+```js
 async function onStartClick() {
   const settings = {
     bpm: parseInt(bpmSlider.value, 10),
@@ -270,9 +195,9 @@ async function onStartClick() {
   const countdownCompleted = await countdown(3)
 
   // Если отсчёт был прерван (нажали Stop), выходим
+  // (onStopClick уже переключил экраны и показал Stats)
   if (!countdownCompleted) {
     console.log('[App] Обратный отсчёт прерван')
-    timerDisplay.textContent = ''
     return
   }
 
@@ -351,10 +276,13 @@ async function onStartClick() {
 
   console.log('[App] Session Screen активирован')
 }
+```
 
-/**
- * Обработчик клика на кнопку Стоп
- */
+#### 3.6 Изменения в onStopClick()
+
+**Полный код функции с защитой от повторных вызовов:**
+
+```js
 function onStopClick() {
   // Защита от повторных вызовов
   if (isStopping) {
@@ -422,15 +350,44 @@ function onStopClick() {
 
   console.log('[App] Stats Screen активирован')
 }
+```
 
-/**
- * Обработчик клика на кнопку "Новое занятие"
- */
-function onNewSessionClick() {
-  statsScreen.style.display = 'none'
-  setupScreen.style.display = 'block'
-  console.log('[App] Возврат в Setup Screen')
-}
+---
 
-// Запуск приложения
-document.addEventListener('DOMContentLoaded', init)
+## Файлы для изменения
+
+1. **src/web/index.html** — добавить `<div id="timer-display" class="timer"></div>` внутри `#session-screen`
+2. **src/web/styles/main.css** — стили `.timer`
+3. **src/web/js/app.js**:
+   - Новые переменные: `timerDisplay`, `sessionTimerInterval`, `sessionDurationMs`, `countdownInterval`, `countdownAborted`, `isStopping`
+   - В `init()`: получение `timerDisplay`
+   - Новые функции: `countdown()`, `abortCountdown()`, `updateTimerDisplay()`, `onTimerTick()`
+   - Изменения в `onStartClick()`: обратный отсчёт перед запуском, сброс `isStopping`
+   - Изменения в `onStopClick()`: защита от повторных вызовов, очистка таймеров
+
+---
+
+## Edge Cases
+
+| Сценарий | Ожидаемое поведение |
+|----------|---------------------|
+| Stop во время обратного отсчёта | Отсчёт прерывается, переход на Stats с нулевой статистикой |
+| Время занятия = 0 | Валидация не пропустит (min=1 в HTML) |
+| Stop сразу после старта | Корректная остановка, короткое время занятия |
+| Повторный вызов onStopClick() | Игнорируется благодаря флагу `isStopping` |
+| onTimerTick() во время остановки | Игнорируется благодаря проверке `isStopping` |
+
+---
+
+## Верификация
+
+1. Запустить приложение
+2. Установить время занятия **1 минута**
+3. Нажать **Старт**
+4. ✅ Показывается "3", через секунду "2", затем "1"
+5. ✅ После "1" — начинается метроном и таймер показывает "1:00"
+6. ✅ Таймер идёт: 0:59, 0:58, ...
+7. ✅ Дождаться окончания — автоматический переход на Stats
+8. ✅ Проверить досрочный Стоп — всё останавливается корректно
+9. ✅ **Тест прерывания:** Нажать Stop во время обратного отсчёта (на "2" или "3") — отсчёт прерывается, переход на Stats с нулевой статистикой (0%, 0 ударов, 0:00)
+10. ✅ **Тест повторного Stop:** Быстро нажать Stop дважды — второй клик игнорируется

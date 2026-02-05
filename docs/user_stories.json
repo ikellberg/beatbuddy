@@ -151,15 +151,16 @@
         "Кнопка Стоп останавливает всё и показывает статистику",
         "Таймер показывает оставшееся время",
         "По истечении времени автоматически переход к статистике",
+        "Обратный отсчёт 3-2-1 перед началом занятия",
         "Кнопки работают",
         "Таймер корректен",
         "Автоматическое завершение по таймеру",
         "Все модули (метроном, датчик, анализ) синхронизированы"
       ],
       "priority": 7,
-      "passes": false,
-      "technicalNotes": "Координация между MetronomeEngine, SensorManager, RhythmAnalyzer. Таймер через setInterval (некритично для точности). Переход между экранами: Setup → Session → Stats",
-      "relatedFiles": ["src/web/js/app.js", "src/web/index.html"]
+      "passes": true,
+      "technicalNotes": "Координация между MetronomeEngine, SensorManager, RhythmAnalyzer. Таймер через setInterval (некритично для точности). Переход между экранами: Setup → Session → Stats. Обратный отсчёт 3-2-1 с возможностью прерывания.",
+      "relatedFiles": ["src/web/js/app.js", "src/web/index.html", "src/web/styles/main.css"]
     }
   ]
 }

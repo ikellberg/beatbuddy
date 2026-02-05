@@ -133,6 +133,15 @@ input[type="checkbox"] {
   margin-bottom: 20px;
 }
 
+/* Таймер на Session Screen */
+.timer {
+  font-size: 96px;
+  font-weight: bold;
+  color: var(--secondary-color);
+  text-align: center;
+  margin: 20px 0;
+}
+
 /* Stats Screen */
 #stats-screen {
   max-width: 500px;
