@@ -119,7 +119,7 @@
         "Плавная, без лагов"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "technicalNotes": "Canvas или CSS animations. Подписка на события из RhythmAnalyzer. Простая анимация: круг растёт/сжимается в такт метроному",
       "relatedFiles": ["src/web/js/Animator.js", "src/web/styles/main.css"]
     },
@@ -138,8 +138,8 @@
         "Возврат в меню работает"
       ],
       "priority": 6,
-      "passes": false,
-      "technicalNotes": "Простой HTML/CSS экран. Данные берутся из RhythmAnalyzer",
+      "passes": true,
+      "technicalNotes": "Stats Screen с тремя показателями: точность (%), ударов, время (M:SS). Данные берутся из RhythmAnalyzer.getAccuracy(). Переход: Session → Stats → Setup.",
       "relatedFiles": ["src/web/index.html", "src/web/styles/main.css", "src/web/js/app.js"]
     },
     {
