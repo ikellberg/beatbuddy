@@ -46,6 +46,30 @@
     <button id="stop-button" class="primary-button danger-button">Стоп</button>
   </div>
 
+  <!-- Stats Screen -->
+  <div id="stats-screen" style="display: none;">
+    <h1>🎉 Результаты</h1>
+
+    <div class="stats-container">
+      <div class="stat-item">
+        <div class="stat-value" id="stats-accuracy">0%</div>
+        <div class="stat-label">Точность</div>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-value" id="stats-hits">0</div>
+        <div class="stat-label">Ударов</div>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-value" id="stats-duration">0:00</div>
+        <div class="stat-label">Время</div>
+      </div>
+    </div>
+
+    <button id="new-session-button" class="primary-button">Новое занятие</button>
+  </div>
+
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

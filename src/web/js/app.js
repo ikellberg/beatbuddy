@@ -38,6 +38,13 @@ let rhythmAnalyzer = null
 // Аниматор
 let animator = null
 
+// Stats Screen
+let statsScreen = null
+let statsAccuracy = null
+let statsHits = null
+let statsDuration = null
+let sessionStartTimestamp = null
+
 /**
  * Инициализация приложения
  */
@@ -54,6 +61,13 @@ function init() {
   setupScreen = document.getElementById('setup-screen')
   stopButton = document.getElementById('stop-button')
   metronomeStatus = document.getElementById('metronome-status')
+
+  // Получить элементы Stats Screen
+  statsScreen = document.getElementById('stats-screen')
+  statsAccuracy = document.getElementById('stats-accuracy')
+  statsHits = document.getElementById('stats-hits')
+  statsDuration = document.getElementById('stats-duration')
+  document.getElementById('new-session-button').addEventListener('click', onNewSessionClick)
 
   // Загрузить настройки
   loadSettings()
@@ -162,6 +176,9 @@ async function onStartClick() {
 
   console.log('[App] Старт занятия с настройками:', settings)
 
+  // Запомнить время старта для статистики
+  sessionStartTimestamp = performance.now()
+
   // Переключить экраны: скрыть Setup, показать Session
   setupScreen.style.display = 'none'
   sessionScreen.style.display = 'block'
@@ -239,12 +256,20 @@ async function onStartClick() {
 function onStopClick() {
   console.log('[App] Остановка занятия')
 
-  // Вывести финальную статистику ритма
+  // Собрать статистику ДО обнуления rhythmAnalyzer
+  let stats = { totalStrikes: 0, accurateHits: 0, misses: 0, accuracyPercent: '0.0' }
   if (rhythmAnalyzer) {
-    const stats = rhythmAnalyzer.getAccuracy()
+    stats = rhythmAnalyzer.getAccuracy()
     console.log(`[App] Final accuracy: ${stats.accurateHits}/${stats.totalStrikes} (${stats.accuracyPercent}%)`)
     rhythmAnalyzer = null
   }
+
+  // Вычислить время занятия (если sessionStartTimestamp не установлен — показать 0:00)
+  const elapsedMs = sessionStartTimestamp ? performance.now() - sessionStartTimestamp : 0
+  const elapsedSeconds = Math.floor(elapsedMs / 1000)
+  const minutes = Math.floor(elapsedSeconds / 60)
+  const seconds = elapsedSeconds % 60
+  const durationText = `${minutes}:${seconds.toString().padStart(2, '0')}`
 
   // Остановить аниматор
   if (animator) {
@@ -252,11 +277,9 @@ function onStopClick() {
     animator = null
   }
 
-  // Вывести статистику метронома
+  // Вывести статистику метронома и остановить
   if (metronome) {
     console.log(`[App] Total clicks: ${metronome.clickCount}`)
-
-    // Остановить метроном
     metronome.stop()
     metronome = null
   }
@@ -267,10 +290,27 @@ function onStopClick() {
     sensor = null
   }
 
-  // Переключить экраны: показать Setup, скрыть Session
-  sessionScreen.style.display = 'none'
-  setupScreen.style.display = 'block'
+  // Сбросить sessionStartTimestamp для следующего занятия
+  sessionStartTimestamp = null
 
+  // Переключить экраны: показать Stats, скрыть Session
+  sessionScreen.style.display = 'none'
+  statsScreen.style.display = 'block'
+
+  // Заполнить данные статистики
+  statsAccuracy.textContent = `${stats.accuracyPercent}%`
+  statsHits.textContent = stats.totalStrikes
+  statsDuration.textContent = durationText
+
+  console.log('[App] Stats Screen активирован')
+}
+
+/**
+ * Обработчик клика на кнопку "Новое занятие"
+ */
+function onNewSessionClick() {
+  statsScreen.style.display = 'none'
+  setupScreen.style.display = 'block'
   console.log('[App] Возврат в Setup Screen')
 }
 
