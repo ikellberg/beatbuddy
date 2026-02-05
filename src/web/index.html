@@ -14,9 +14,9 @@
     <div class="setting-group">
       <label for="bpm-slider">
         Темп (BPM):
-        <span id="bpm-value" class="setting-value">120</span>
+        <span id="bpm-value" class="setting-value">60</span>
       </label>
-      <input type="range" id="bpm-slider" min="40" max="200" value="120" step="1">
+      <input type="range" id="bpm-slider" min="50" max="70" value="60" step="1">
     </div>
 
     <div class="setting-group">
@@ -53,18 +53,25 @@
 
     <div class="stats-container">
       <div class="stat-item">
-        <div class="stat-value" id="stats-accuracy">0%</div>
-        <div class="stat-label">Точность</div>
+        <div class="stat-value stat-perfect" id="stats-perfect">0</div>
+        <div class="stat-label">Отлично</div>
       </div>
 
       <div class="stat-item">
-        <div class="stat-value" id="stats-hits">0</div>
-        <div class="stat-label">Ударов</div>
+        <div class="stat-value stat-good" id="stats-good">0</div>
+        <div class="stat-label">Хорошо</div>
       </div>
 
       <div class="stat-item">
-        <div class="stat-value" id="stats-duration">0:00</div>
-        <div class="stat-label">Время</div>
+        <div class="stat-value stat-miss" id="stats-miss">0</div>
+        <div class="stat-label">Мимо</div>
+      </div>
+    </div>
+
+    <div class="stats-secondary">
+      <div class="stat-item-small">
+        <span class="stat-label-small">Время:</span>
+        <span id="stats-duration">0:00</span>
       </div>
     </div>
 

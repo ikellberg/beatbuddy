@@ -9,7 +9,7 @@
       "title": "Настройка параметров метронома",
       "description": "Как педагог я хочу настроить темп (BPM) и время занятия, чтобы подготовить занятие для ребёнка",
       "acceptanceCriteria": [
-        "UI с ползунком темпа (диапазон TBD, ориентировочно 40-200 BPM)",
+        "UI с ползунком темпа (диапазон 50-70 BPM)",
         "Поле ввода времени занятия (минуты)",
         "Большие элементы управления (минимум 60px высота кнопок)",
         "Яркие цвета, чёткий контраст",
@@ -176,9 +176,9 @@
         "Пороги подобраны для детей разных возрастов"
       ],
       "priority": 9,
-      "passes": false,
-      "technicalNotes": "Расширение RhythmAnalyzer. Текущий deviation уже вычисляется. Нужно: определить пороги зон, обновить визуализацию (Animator), обновить статистику. Обсудить: адаптивные пороги по возрасту/уровню?",
-      "relatedFiles": ["src/web/js/RhythmAnalyzer.js", "src/web/js/Animator.js", "src/web/js/app.js"]
+      "passes": true,
+      "technicalNotes": "Пороги: Perfect ≤75ms, Good ≤150ms, Miss >150ms (фиксированные, адаптивные — будущее расширение). RhythmAnalyzer возвращает zone: 'perfect'|'good'|'miss'. Stats Screen показывает три числа по зонам. Animator рисует волны разных цветов (зелёный/жёлтый/красный).",
+      "relatedFiles": ["src/web/js/RhythmAnalyzer.js", "src/web/js/Animator.js", "src/web/js/app.js", "src/web/index.html", "src/web/styles/main.css"]
     }
   ]
 }

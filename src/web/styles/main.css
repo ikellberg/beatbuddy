@@ -168,8 +168,30 @@ input[type="checkbox"] {
   color: var(--primary-color);
 }
 
+/* Цвета зон точности */
+.stat-perfect { color: #4CAF50; }
+.stat-good { color: #FFC107; }
+.stat-miss { color: #f44336; }
+
 .stat-label {
   font-size: 24px;
   color: #666;
   margin-top: 10px;
+}
+
+/* Вторичная статистика (время) */
+.stats-secondary {
+  margin: 20px 0 30px;
+  padding: 15px;
+  background-color: #f0f0f0;
+  border-radius: 12px;
+}
+
+.stat-item-small {
+  font-size: 20px;
+  color: #666;
+}
+
+.stat-label-small {
+  font-weight: bold;
 }

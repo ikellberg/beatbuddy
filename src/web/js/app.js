@@ -8,7 +8,7 @@ const SETTINGS_KEY = 'beatBuddySettings'
 
 // Настройки по умолчанию
 const DEFAULT_SETTINGS = {
-  bpm: 120,
+  bpm: 60,
   duration: 5,
   devMode: false
 }
@@ -40,8 +40,9 @@ let animator = null
 
 // Stats Screen
 let statsScreen = null
-let statsAccuracy = null
-let statsHits = null
+let statsPerfect = null
+let statsGood = null
+let statsMiss = null
 let statsDuration = null
 let sessionStartTimestamp = null
 
@@ -72,8 +73,9 @@ function init() {
 
   // Получить элементы Stats Screen
   statsScreen = document.getElementById('stats-screen')
-  statsAccuracy = document.getElementById('stats-accuracy')
-  statsHits = document.getElementById('stats-hits')
+  statsPerfect = document.getElementById('stats-perfect')
+  statsGood = document.getElementById('stats-good')
+  statsMiss = document.getElementById('stats-miss')
   statsDuration = document.getElementById('stats-duration')
   document.getElementById('new-session-button').addEventListener('click', onNewSessionClick)
 
@@ -139,7 +141,7 @@ function onBpmChange() {
   const bpm = parseInt(bpmSlider.value, 10)
 
   // Валидация
-  if (bpm < 40 || bpm > 200) {
+  if (bpm < 50 || bpm > 70) {
     console.warn(`[App] BPM вне диапазона: ${bpm}`)
     return
   }
@@ -292,9 +294,9 @@ async function onStartClick() {
   // Создать анализатор ритма (учитываем задержку первого клика = 60/bpm)
   const sessionStartTime = performance.now() / 1000
   const firstBeatDelay = 60 / settings.bpm
-  rhythmAnalyzer = new RhythmAnalyzer(sessionStartTime + firstBeatDelay, settings.bpm, 100)
+  rhythmAnalyzer = new RhythmAnalyzer(sessionStartTime + firstBeatDelay, settings.bpm)
 
-  console.log(`[App] RhythmAnalyzer создан: startTime=${(sessionStartTime + firstBeatDelay).toFixed(3)}s, threshold=±100ms`)
+  console.log(`[App] RhythmAnalyzer создан: startTime=${(sessionStartTime + firstBeatDelay).toFixed(3)}s, thresholds: perfect=±75ms, good=±150ms`)
 
   // Создать и запустить аниматор
   const canvas = document.getElementById('rhythm-canvas')
@@ -317,12 +319,13 @@ async function onStartClick() {
     if (rhythmAnalyzer) {
       const result = rhythmAnalyzer.recordHit(event.timestamp / 1000)
 
-      const statusIcon = result.isHit ? '✅ HIT' : '❌ MISS'
+      // Логирование с эмодзи по зоне
+      const icons = { perfect: '🟢 PERFECT', good: '🟡 GOOD', miss: '🔴 MISS' }
       const deviationText = result.deviation >= 0
         ? `+${result.deviation.toFixed(0)}ms`
         : `${result.deviation.toFixed(0)}ms`
 
-      console.log(`[App] ${statusIcon} | beat=${result.beatNumber} | deviation=${deviationText}`)
+      console.log(`[App] ${icons[result.zone]} | beat=${result.beatNumber} | deviation=${deviationText}`)
 
       // Передать результат в аниматор
       if (animator) {
@@ -332,7 +335,7 @@ async function onStartClick() {
       // Логировать текущую статистику каждые 10 ударов
       const stats = rhythmAnalyzer.getAccuracy()
       if (stats.totalStrikes % 10 === 0) {
-        console.log(`[App] Stats: ${stats.accurateHits}/${stats.totalStrikes} (${stats.accuracyPercent}%)`)
+        console.log(`[App] Stats: P=${stats.perfectHits} G=${stats.goodHits} M=${stats.misses} (total=${stats.totalStrikes})`)
       }
     }
   })
@@ -375,10 +378,10 @@ function onStopClick() {
   }
 
   // Собрать статистику ДО обнуления rhythmAnalyzer
-  let stats = { totalStrikes: 0, accurateHits: 0, misses: 0, accuracyPercent: '0.0' }
+  let stats = { totalStrikes: 0, perfectHits: 0, goodHits: 0, misses: 0 }
   if (rhythmAnalyzer) {
     stats = rhythmAnalyzer.getAccuracy()
-    console.log(`[App] Final accuracy: ${stats.accurateHits}/${stats.totalStrikes} (${stats.accuracyPercent}%)`)
+    console.log(`[App] Final stats: P=${stats.perfectHits} G=${stats.goodHits} M=${stats.misses} (total=${stats.totalStrikes})`)
     rhythmAnalyzer = null
   }
 
@@ -416,8 +419,9 @@ function onStopClick() {
   statsScreen.style.display = 'block'
 
   // Заполнить данные статистики
-  statsAccuracy.textContent = `${stats.accuracyPercent}%`
-  statsHits.textContent = stats.totalStrikes
+  statsPerfect.textContent = stats.perfectHits
+  statsGood.textContent = stats.goodHits
+  statsMiss.textContent = stats.misses
   statsDuration.textContent = durationText
 
   console.log('[App] Stats Screen активирован')

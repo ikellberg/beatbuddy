@@ -30,8 +30,9 @@ export class Animator {
 
     // Цвета (совпадают с CSS переменными)
     this.colors = {
-      hit: '#4CAF50',      // зелёный --primary-color
-      miss: '#f44336',     // красный .danger-button
+      perfect: '#4CAF50',  // зелёный — отличное попадание
+      good: '#FFC107',     // жёлтый — неплохое попадание
+      miss: '#f44336',     // красный — промах
       rhythm: '#CCCCCC'    // светло-серый для фоновых волн
     }
 
@@ -77,15 +78,20 @@ export class Animator {
 
   /**
    * Обработать удар — добавить визуальную волну
-   * @param {{isHit: boolean, deviation: number, beatNumber: number}} result
+   * @param {{zone: 'perfect' | 'good' | 'miss', deviation: number, beatNumber: number}} result
    */
   onHit(result) {
     if (!this.running) {
       return
     }
 
-    const color = result.isHit ? this.colors.hit : this.colors.miss
-    const speed = result.isHit ? Animator.HIT_WAVE_SPEED : Animator.MISS_WAVE_SPEED
+    // Выбор цвета по зоне (fallback на miss если zone невалидный)
+    const color = this.colors[result.zone] || this.colors.miss
+
+    // Скорость волны: miss быстрее, остальные — медленнее
+    const speed = result.zone === 'miss'
+      ? Animator.MISS_WAVE_SPEED
+      : Animator.HIT_WAVE_SPEED
 
     this.hitWaves.push({
       radius: 0,
@@ -99,7 +105,8 @@ export class Animator {
       this.hitWaves.shift()
     }
 
-    console.log(`[Animator] Волна: ${result.isHit ? 'ПОПАДАНИЕ' : 'ПРОМАХ'}, deviation=${result.deviation.toFixed(0)}ms`)
+    const zoneLabels = { perfect: 'PERFECT', good: 'GOOD', miss: 'MISS' }
+    console.log(`[Animator] Волна: ${zoneLabels[result.zone]}, deviation=${result.deviation.toFixed(0)}ms`)
   }
 
   /**
