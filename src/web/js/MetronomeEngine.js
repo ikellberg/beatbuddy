@@ -21,7 +21,7 @@ export class MetronomeEngine {
 
   /**
    * Запустить метроном с заданным темпом
-   * @param {number} bpm - темп в BPM (40-200)
+   * @param {number} bpm - темп в BPM (50-70)
    */
   start(bpm) {
     // Guard clause: проверка, что метроном уже не запущен
@@ -31,8 +31,8 @@ export class MetronomeEngine {
     }
 
     // Guard clause: валидация BPM
-    if (bpm < 40 || bpm > 200) {
-      console.error(`[MetronomeEngine] Invalid BPM: ${bpm} (допустимый диапазон: 40-200)`)
+    if (bpm < 50 || bpm > 70) {
+      console.error(`[MetronomeEngine] Invalid BPM: ${bpm} (допустимый диапазон: 50-70)`)
       return
     }
 
