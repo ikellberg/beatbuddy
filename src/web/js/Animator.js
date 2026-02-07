@@ -1,217 +1,253 @@
 /**
- * Animator — визуальная обратная связь для ритма
+ * Animator — минимальная PixiJS анимация для ритма (без волн).
  *
- * Рисует бегущие волны от центра canvas в такт метроному.
- * При попадании — зелёная волна, при промахе — красная.
+ * Публичный API сохранён для app.js: start(), stop(), onHit(result).
+ * Визуал: центральный пульс в BPM + короткая подсветка зоны при ударе.
  */
 export class Animator {
-  // Константы анимации
-  static HIT_WAVE_SPEED = 3
-  static MISS_WAVE_SPEED = 5
-  static MAX_WAVES = 20
-  static ALPHA_DECAY = 0.02
-
   /**
-   * @param {HTMLCanvasElement} canvasElement - canvas для рисования
-   * @param {number} bpm - темп метронома
+   * @param {HTMLCanvasElement} canvasElement
+   * @param {number} bpm
+   * @param {number|null} firstBeatTimeSec - время первого бита в шкале performance.now()/1000
    */
-  constructor(canvasElement, bpm) {
+  constructor(canvasElement, bpm, firstBeatTimeSec = null) {
     this.canvas = canvasElement
-    this.ctx = this.canvas.getContext('2d')
     this.bpm = bpm
+    this.firstBeatTimeSec = Number.isFinite(firstBeatTimeSec) ? firstBeatTimeSec : null
 
-    // Состояние анимации
     this.running = false
-    this.animationId = null
-    this.startTime = null
+    this.startTime = 0
 
-    // Волны от ударов (массив объектов {radius, color, alpha, speed})
-    this.hitWaves = []
+    this.pixiApp = null
+    this.graphics = null
 
-    // Цвета (совпадают с CSS переменными)
+    this.hitFlash = null
+
     this.colors = {
-      perfect: '#4CAF50',  // зелёный — отличное попадание
-      good: '#FFC107',     // жёлтый — неплохое попадание
-      miss: '#f44336',     // красный — промах
-      rhythm: '#CCCCCC'    // светло-серый для фоновых волн
+      base: 0xDDE6FF,
+      perfect: 0x4CAF50,
+      good: 0xFFC107,
+      miss: 0xF44336
     }
 
-    console.log(`[Animator] Создан: BPM=${bpm}`)
+    this.status = {
+      ok: true,
+      mode: 'pixi',
+      message: 'Animator готов к запуску'
+    }
+
+    this._tick = this._tick.bind(this)
+    console.log(`[Animator] Создан (PixiJS, minimal): BPM=${bpm}`)
   }
 
-  /**
-   * Запустить анимацию
-   */
+  getStatus() {
+    return { ...this.status }
+  }
+
   start() {
     if (this.running) {
       console.warn('[Animator] Уже запущен')
       return
     }
 
+    if (!this._initPixi()) {
+      console.error('[Animator] Не удалось инициализировать PixiJS')
+      return
+    }
+
     this.running = true
     this.startTime = performance.now()
+    this.pixiApp.ticker.add(this._tick)
     console.log('[Animator] Запущен')
-
-    this._animate()
   }
 
-  /**
-   * Остановить анимацию и очистить canvas
-   */
   stop() {
-    if (!this.running) {
+    if (!this.running && !this.pixiApp) {
       return
     }
 
     this.running = false
 
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId)
-      this.animationId = null
+    if (this.pixiApp) {
+      this.pixiApp.ticker.remove(this._tick)
+      this.pixiApp.stage.removeChildren()
+      // Не удаляем shared текстуры Pixi, чтобы не ловить артефакты при повторном старте.
+      this.pixiApp.destroy(false, {
+        children: true,
+        texture: false,
+        baseTexture: false
+      })
     }
 
-    // Очистить canvas
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+    this.pixiApp = null
+    this.graphics = null
+    this.hitFlash = null
 
     console.log('[Animator] Остановлен')
   }
 
   /**
-   * Обработать удар — добавить визуальную волну
-   * @param {{zone: 'perfect' | 'good' | 'miss', deviation: number, beatNumber: number}} result
+   * @param {{zone: 'perfect' | 'good' | 'miss'}} result
    */
   onHit(result) {
-    if (!this.running) {
+    if (!this.running || !this.graphics) {
       return
     }
 
-    // Выбор цвета по зоне (fallback на miss если zone невалидный)
-    const color = this.colors[result.zone] || this.colors.miss
+    const zone = result.zone === 'perfect' || result.zone === 'good' || result.zone === 'miss'
+      ? result.zone
+      : 'miss'
 
-    // Скорость волны: miss быстрее, остальные — медленнее
-    const speed = result.zone === 'miss'
-      ? Animator.MISS_WAVE_SPEED
-      : Animator.HIT_WAVE_SPEED
+    const flashMs = zone === 'perfect' ? 320 : zone === 'good' ? 240 : 180
+    const maxAlpha = zone === 'perfect' ? 0.55 : zone === 'good' ? 0.45 : 0.35
 
-    this.hitWaves.push({
-      radius: 0,
-      color,
-      alpha: 1.0,
-      speed
-    })
-
-    // Ограничить количество волн для производительности
-    if (this.hitWaves.length > Animator.MAX_WAVES) {
-      this.hitWaves.shift()
+    this.hitFlash = {
+      zone,
+      start: performance.now(),
+      durationMs: flashMs,
+      maxAlpha
     }
-
-    const zoneLabels = { perfect: 'PERFECT', good: 'GOOD', miss: 'MISS' }
-    console.log(`[Animator] Волна: ${zoneLabels[result.zone]}, deviation=${result.deviation.toFixed(0)}ms`)
   }
 
-  /**
-   * Основной цикл анимации
-   * @private
-   */
-  _animate() {
-    if (!this.running) {
+  _initPixi() {
+    if (this.pixiApp) {
+      return true
+    }
+
+    if (!this.canvas) {
+      this.status = {
+        ok: false,
+        mode: 'fallback',
+        message: 'Анимация недоступна: canvas не найден'
+      }
+      return false
+    }
+
+    const renderWidth = Math.max(1, Math.floor(this.canvas.clientWidth || this.canvas.width))
+    const renderHeight = Math.max(1, Math.floor(this.canvas.clientHeight || this.canvas.height))
+    if (renderWidth <= 0 || renderHeight <= 0) {
+      this.status = {
+        ok: false,
+        mode: 'fallback',
+        message: 'Анимация недоступна: невалидный размер canvas'
+      }
+      return false
+    }
+
+    const pixi = globalThis.PIXI
+    if (!pixi || !pixi.Application || !pixi.Graphics) {
+      this.status = {
+        ok: false,
+        mode: 'fallback',
+        message: 'Анимация недоступна: PixiJS не загружен'
+      }
+      return false
+    }
+
+    if (!this._isWebGLAvailable()) {
+      this.status = {
+        ok: false,
+        mode: 'fallback',
+        message: 'Анимация недоступна: WebGL не поддерживается в этом браузере'
+      }
+      return false
+    }
+
+    try {
+      this.pixiApp = new pixi.Application({
+        view: this.canvas,
+        width: renderWidth,
+        height: renderHeight,
+        backgroundAlpha: 0,
+        antialias: true,
+        autoDensity: true,
+        resolution: Math.min(globalThis.devicePixelRatio || 1, 2)
+      })
+
+      this.graphics = new pixi.Graphics()
+      this.pixiApp.stage.addChild(this.graphics)
+
+      this.status = {
+        ok: true,
+        mode: 'pixi',
+        message: 'Animator работает через PixiJS'
+      }
+      return true
+    } catch (error) {
+      console.error('[Animator] Ошибка инициализации PixiJS:', error)
+      this.status = {
+        ok: false,
+        mode: 'fallback',
+        message: 'Анимация недоступна: не удалось инициализировать PixiJS'
+      }
+      return false
+    }
+  }
+
+  _isWebGLAvailable() {
+    try {
+      const testCanvas = document.createElement('canvas')
+      const gl = testCanvas.getContext('webgl2')
+        || testCanvas.getContext('webgl')
+        || testCanvas.getContext('experimental-webgl')
+      return Boolean(gl)
+    } catch (_error) {
+      return false
+    }
+  }
+
+  _tick() {
+    if (!this.running || !this.pixiApp || !this.graphics) {
       return
     }
 
-    this._draw()
-    this.animationId = requestAnimationFrame(() => this._animate())
-  }
-
-  /**
-   * Нарисовать кадр
-   * @private
-   */
-  _draw() {
-    const { width, height } = this.canvas
+    const width = this.pixiApp.screen.width
+    const height = this.pixiApp.screen.height
     const centerX = width / 2
     const centerY = height / 2
-    const maxRadius = Math.max(width, height) / 2
+    const minSide = Math.min(width, height)
 
-    // Очистить canvas
-    this.ctx.clearRect(0, 0, width, height)
+    const nowSec = performance.now() / 1000
+    const beatStartSec = this.firstBeatTimeSec ?? (this.startTime / 1000)
+    const beatsFromStart = ((nowSec - beatStartSec) * this.bpm) / 60
+    const phase = ((beatsFromStart % 1) + 1) % 1
 
-    const currentTime = performance.now()
-    const elapsedSeconds = (currentTime - this.startTime) / 1000
+    // Пик пульса на самом бите (phase=0,1,2...), минимум в середине интервала.
+    const pulse = (Math.cos(phase * Math.PI * 2) + 1) / 2
 
-    // Фоновая волна в такт метроному
-    this._drawRhythmWave(centerX, centerY, maxRadius, elapsedSeconds)
+    const baseRadius = minSide * 0.12
+    const pulseRadius = baseRadius + pulse * (minSide * 0.05)
 
-    // Волны от ударов
-    this._drawHitWaves(centerX, centerY, maxRadius)
-  }
+    this.graphics.clear()
 
-  /**
-   * Нарисовать фоновую волну в такт метроному
-   * @private
-   */
-  _drawRhythmWave(centerX, centerY, maxRadius, elapsedSeconds) {
-    // Количество волн, прошедших с начала
-    const beatsPassed = elapsedSeconds * this.bpm / 60
+    // Базовая мягкая подсветка в такт.
+    this.graphics.beginFill(this.colors.base, 0.16 + pulse * 0.18)
+    this.graphics.drawCircle(centerX, centerY, pulseRadius * 1.8)
+    this.graphics.endFill()
 
-    // Радиус текущей волны (0..1)
-    const wavePhase = beatsPassed % 1  // дробная часть
-    const radius = wavePhase * maxRadius
+    this.graphics.beginFill(this.colors.base, 0.36 + pulse * 0.22)
+    this.graphics.drawCircle(centerX, centerY, pulseRadius)
+    this.graphics.endFill()
 
-    // Alpha уменьшается по мере роста радиуса
-    const alpha = 1 - wavePhase
+    // Короткая цветовая подсветка зоны попадания.
+    if (this.hitFlash) {
+      const now = performance.now()
+      const progress = (now - this.hitFlash.start) / this.hitFlash.durationMs
 
-    if (alpha > 0) {
-      this.ctx.beginPath()
-      this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
-      this.ctx.strokeStyle = `rgba(204, 204, 204, ${alpha * 0.5})`  // серый с прозрачностью
-      this.ctx.lineWidth = 3
-      this.ctx.stroke()
-    }
-  }
+      if (progress >= 1) {
+        this.hitFlash = null
+      } else {
+        const fade = 1 - progress
+        const color = this.colors[this.hitFlash.zone]
+        const alpha = this.hitFlash.maxAlpha * fade
 
-  /**
-   * Нарисовать волны от ударов
-   * @private
-   */
-  _drawHitWaves(centerX, centerY, maxRadius) {
-    // Обновить и нарисовать каждую волну
-    for (let i = this.hitWaves.length - 1; i >= 0; i--) {
-      const wave = this.hitWaves[i]
+        this.graphics.beginFill(color, alpha * 0.22)
+        this.graphics.drawCircle(centerX, centerY, pulseRadius * 2.3)
+        this.graphics.endFill()
 
-      // Увеличить радиус
-      wave.radius += wave.speed
-
-      // Уменьшить прозрачность
-      wave.alpha -= Animator.ALPHA_DECAY
-
-      // Удалить waves, которые исчезли
-      if (wave.alpha <= 0 || wave.radius > maxRadius) {
-        this.hitWaves.splice(i, 1)
-        continue
+        this.graphics.lineStyle(8, color, alpha)
+        this.graphics.drawCircle(centerX, centerY, pulseRadius * 1.25)
       }
-
-      // Нарисовать волну
-      this.ctx.beginPath()
-      this.ctx.arc(centerX, centerY, wave.radius, 0, Math.PI * 2)
-      this.ctx.strokeStyle = this._hexToRgba(wave.color, wave.alpha)
-      this.ctx.lineWidth = 5
-      this.ctx.stroke()
     }
-  }
-
-  /**
-   * Конвертировать hex цвет в rgba с alpha
-   * @private
-   */
-  _hexToRgba(hex, alpha) {
-    // Убрать # если есть
-    hex = hex.replace('#', '')
-
-    // Парсить RGB
-    const r = parseInt(hex.substring(0, 2), 16)
-    const g = parseInt(hex.substring(2, 4), 16)
-    const b = parseInt(hex.substring(4, 6), 16)
-
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`
   }
 }

@@ -288,15 +288,19 @@ async function onStartClick() {
 
   // Обновить индикатор статуса
   metronomeStatus.textContent = `Метроном: ▶️ Работает (${settings.bpm} BPM)`
+  const metronomeIndicator = document.getElementById('metronome-indicator')
+  if (metronomeIndicator) {
+    metronomeIndicator.style.display = 'none'
+  }
 
   console.log(`[App] Метроном запущен: BPM=${settings.bpm}, интервал=${(60/settings.bpm).toFixed(3)}s`)
 
-  // Создать анализатор ритма (учитываем задержку первого клика = 60/bpm)
-  const sessionStartTime = performance.now() / 1000
-  const firstBeatDelay = 60 / settings.bpm
-  rhythmAnalyzer = new RhythmAnalyzer(sessionStartTime + firstBeatDelay, settings.bpm)
+  // Синхронизируем анализатор с первым СЛЫШИМЫМ кликом метронома.
+  const fallbackFirstBeatTime = (performance.now() / 1000) + (60 / settings.bpm)
+  const firstBeatTime = metronome.getFirstClickPerformanceTime() ?? fallbackFirstBeatTime
+  rhythmAnalyzer = new RhythmAnalyzer(firstBeatTime, settings.bpm)
 
-  console.log(`[App] RhythmAnalyzer создан: startTime=${(sessionStartTime + firstBeatDelay).toFixed(3)}s, thresholds: perfect=±75ms, good=±150ms`)
+  console.log(`[App] RhythmAnalyzer создан: startTime=${firstBeatTime.toFixed(3)}s, thresholds: perfect=±75ms, good=±150ms`)
 
   // Создать и запустить аниматор
   const canvas = document.getElementById('rhythm-canvas')
@@ -304,9 +308,20 @@ async function onStartClick() {
     console.error('[App] Canvas не найден')
     return
   }
-  animator = new Animator(canvas, settings.bpm)
+  animator = new Animator(canvas, settings.bpm, firstBeatTime)
   animator.start()
-  console.log('[App] Animator запущен')
+  const animatorStatus = typeof animator.getStatus === 'function'
+    ? animator.getStatus()
+    : { ok: true, message: 'Animator status unknown' }
+  if (!animatorStatus.ok) {
+    metronomeStatus.textContent = animatorStatus.message || 'Анимация недоступна'
+    if (metronomeIndicator) {
+      metronomeIndicator.style.display = 'block'
+    }
+    console.warn('[App] Animator fallback:', animatorStatus)
+  } else {
+    console.log('[App] Animator запущен')
+  }
 
   // Создать и подключить сенсор
   const sensorType = SensorManager.getTypeFromSettings(settings.devMode)
@@ -413,6 +428,11 @@ function onStopClick() {
 
   // Сбросить sessionStartTimestamp для следующего занятия
   sessionStartTimestamp = null
+  metronomeStatus.textContent = 'Метроном: ⏸️ Остановлен'
+  const metronomeIndicator = document.getElementById('metronome-indicator')
+  if (metronomeIndicator) {
+    metronomeIndicator.style.display = 'none'
+  }
 
   // Переключить экраны: показать Stats, скрыть Session
   sessionScreen.style.display = 'none'

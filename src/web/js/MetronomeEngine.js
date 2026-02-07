@@ -17,6 +17,7 @@ export class MetronomeEngine {
     // Метрики для проверки drift
     this.clickCount = 0
     this.startTime = null
+    this.firstClickTime = null
   }
 
   /**
@@ -43,6 +44,7 @@ export class MetronomeEngine {
     const secondsPerBeat = 60.0 / bpm
     this.nextClickTime = this.audioContext.currentTime + secondsPerBeat
     this.startTime = this.nextClickTime
+    this.firstClickTime = this.nextClickTime
     this.playing = true
 
     // Сбросить метрики
@@ -91,6 +93,50 @@ export class MetronomeEngine {
    */
   getBpm() {
     return this.bpm
+  }
+
+  /**
+   * Оценка задержки аудиовывода (секунды)
+   * @returns {number}
+   */
+  getOutputLatencySeconds() {
+    if (!this.audioContext) {
+      return 0
+    }
+
+    const outputLatency = Number.isFinite(this.audioContext.outputLatency) ? this.audioContext.outputLatency : 0
+    const baseLatency = Number.isFinite(this.audioContext.baseLatency) ? this.audioContext.baseLatency : 0
+
+    return Math.max(0, outputLatency) + Math.max(0, baseLatency)
+  }
+
+  /**
+   * Получить время первого клика в шкале performance.now() (секунды).
+   * Используется для синхронизации анализатора и визуала с реально слышимым битом.
+   * Вызывать сразу после start(): чем позже вызов, тем менее точной может быть fallback-оценка.
+   * На старых браузерах без getOutputTimestamp/outputLatency/baseLatency точность ограничена.
+   * @returns {number|null}
+   */
+  getFirstClickPerformanceTime() {
+    if (!this.audioContext || !this.firstClickTime) {
+      return null
+    }
+
+    if (typeof this.audioContext.getOutputTimestamp === 'function') {
+      const ts = this.audioContext.getOutputTimestamp()
+      if (
+        ts &&
+        Number.isFinite(ts.contextTime) &&
+        Number.isFinite(ts.performanceTime)
+      ) {
+        return (ts.performanceTime / 1000) + (this.firstClickTime - ts.contextTime)
+      }
+    }
+
+    // Fallback для окружений без getOutputTimestamp.
+    // Это приближённая оценка и она менее точна на старых браузерах.
+    const untilFirstBeat = this.firstClickTime - this.audioContext.currentTime
+    return (performance.now() / 1000) + Math.max(0, untilFirstBeat) + this.getOutputLatencySeconds()
   }
 
   /**

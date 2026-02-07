@@ -228,9 +228,9 @@
         "Нет утечек памяти при длительной работе (10+ минут)"
       ],
       "priority": 11,
-      "passes": false,
-      "technicalNotes": "Заменить Animator.js на PixiJS-версию. PixiJS через CDN. Сохранить тот же API для app.js. Протестировать WebGL на Windows 7 Chrome — если медленно, рассмотреть Canvas fallback в PixiJS.",
-      "relatedFiles": ["src/web/js/Animator.js", "src/web/js/app.js", "src/web/index.html"]
+      "passes": true,
+      "technicalNotes": "Animator переведён на PixiJS (CDN) с сохранением API start()/stop()/onHit(result). Добавлен fallback-статус при недоступном WebGL: явное сообщение пользователю без падения сессии. Для синхронизации попаданий и визуала с реальным звуком используется время первого слышимого клика метронома (MetronomeEngine.getFirstClickPerformanceTime).",
+      "relatedFiles": ["src/web/js/Animator.js", "src/web/js/app.js", "src/web/js/MetronomeEngine.js", "src/web/index.html"]
     },
     {
       "id": "US-012",
