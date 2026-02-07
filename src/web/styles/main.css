@@ -1,197 +1,467 @@
-/* Основные переменные */
+/* ============================================
+   Beat Buddy — UI Redesign
+   Игровой мультяшный стиль для детей 3-15 лет
+   ============================================ */
+
+/* --- CSS Variables --- */
 :root {
-  --primary-color: #4CAF50;  /* Зелёный для кнопок */
-  --secondary-color: #2196F3; /* Синий для акцентов */
-  --background-color: #FFFFFF;
-  --text-color: #333333;
-  --input-border: #CCCCCC;
+  /* Setup screen gradient */
+  --setup-bg-start: #4FC3F7;
+  --setup-bg-end: #B388FF;
+
+  /* Session screen gradient */
+  --session-bg-start: #303F9F;
+  --session-bg-end: #4A148C;
+
+  /* Stats screen gradient */
+  --stats-bg-start: #FFD54F;
+  --stats-bg-end: #FF8A65;
+
+  /* Buttons */
+  --btn-primary: #66BB6A;
+  --btn-primary-hover: #57a85b;
+  --btn-danger: #EF5350;
+  --btn-danger-hover: #d84341;
+
+  /* Accent */
+  --accent: #2979FF;
+
+  /* Cards */
+  --card-bg: rgba(255, 255, 255, 0.92);
+
+  /* Accuracy zones */
+  --color-perfect: #4CAF50;
+  --color-good: #FFC107;
+  --color-miss: #F44336;
+
+  /* Typography */
+  --font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+
+  /* Shadows */
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.15);
+  --shadow-btn: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Базовые стили */
+/* --- Reset & Base --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: 'Arial', sans-serif;
+  font-family: var(--font-family);
   font-size: 18px;
+  font-weight: 700;
   margin: 0;
-  padding: 20px;
-  background-color: var(--background-color);
-  color: var(--text-color);
+  padding: 0;
+  color: #333;
+  overflow-x: hidden;
 }
 
 h1 {
-  font-size: 48px;
+  font-size: 2.8rem;
+  font-weight: 900;
   text-align: center;
-  color: var(--primary-color);
-  margin-bottom: 40px;
+  margin: 0 0 32px;
 }
 
-/* Setup Screen */
+h2 {
+  font-size: 1.8rem;
+  font-weight: 900;
+  text-align: center;
+  margin: 0 0 24px;
+}
+
+/* ============================================
+   SETUP SCREEN
+   ============================================ */
 #setup-screen {
-  max-width: 500px;
-  margin: 0 auto;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--setup-bg-start), var(--setup-bg-end));
+  padding: 40px 20px;
 }
 
+#setup-screen h1 {
+  color: #1a237e;
+  text-shadow: 0 2px 12px rgba(255, 255, 255, 0.5);
+}
+
+/* Card */
+.card {
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--card-bg);
+  border-radius: 24px;
+  padding: 40px 32px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Setting groups */
 .setting-group {
-  margin-bottom: 30px;
+  margin-bottom: 28px;
 }
 
 .setting-group label {
   display: block;
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 1.1rem;
+  font-weight: 700;
   margin-bottom: 10px;
+  color: #444;
 }
 
 .setting-value {
-  color: var(--secondary-color);
-  font-size: 24px;
+  color: var(--accent);
+  font-size: 1.4rem;
+  font-weight: 900;
 }
 
-/* Ползунок BPM */
+/* --- Custom Range Slider (BPM) --- */
 input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
-  height: 10px;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--setup-bg-start), var(--accent));
+  outline: none;
   cursor: pointer;
 }
 
-/* Поле ввода времени */
-input[type="number"] {
-  width: 100%;
-  padding: 15px;
-  font-size: 24px;
-  border: 2px solid var(--input-border);
-  border-radius: 8px;
-  box-sizing: border-box;
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-/* Чекбокс Dev Mode */
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+/* --- Number Input --- */
+input[type="number"] {
+  width: 100%;
+  padding: 14px 16px;
+  font-family: var(--font-family);
+  font-size: 1.2rem;
+  font-weight: 700;
+  border: 3px solid #ddd;
+  border-radius: 16px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="number"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(41, 121, 255, 0.2);
+}
+
+/* --- Checkbox --- */
 input[type="checkbox"] {
   width: 24px;
   height: 24px;
   margin-right: 10px;
   vertical-align: middle;
   cursor: pointer;
+  accent-color: var(--accent);
 }
 
-/* Кнопка Старт */
+/* --- Buttons --- */
 .primary-button {
+  display: block;
   width: 100%;
-  height: 80px;
-  font-size: 28px;
-  font-weight: bold;
-  color: white;
-  background-color: var(--primary-color);
+  height: 72px;
+  font-family: var(--font-family);
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #fff;
+  background: var(--btn-primary);
   border: none;
-  border-radius: 12px;
+  border-radius: 20px;
   cursor: pointer;
-  margin-top: 20px;
-  transition: background-color 0.3s;
+  margin-top: 12px;
+  box-shadow: 0 6px 0 #4a9e4e, var(--shadow-btn);
+  transition: transform 0.1s, box-shadow 0.1s;
+  letter-spacing: 0.5px;
 }
 
 .primary-button:hover {
-  background-color: #45A049;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #4a9e4e, 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 .primary-button:active {
-  transform: scale(0.98);
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #4a9e4e, 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Session Screen */
-#session-screen {
-  max-width: 500px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-#session-screen h2 {
-  font-size: 36px;
-  color: var(--primary-color);
-  margin-bottom: 30px;
-}
-
-.indicator {
-  font-size: 24px;
-  padding: 20px;
-  margin: 30px 0;
-  border-radius: 12px;
-  background-color: #f0f0f0;
-}
-
-/* Кнопка Stop (красная) */
+/* Danger button (Stop) */
 .danger-button {
-  background-color: #f44336;
+  background: var(--btn-danger);
+  box-shadow: 0 6px 0 #c62828, var(--shadow-btn);
 }
 
 .danger-button:hover {
-  background-color: #d32f2f;
+  box-shadow: 0 8px 0 #c62828, 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
-/* Canvas для анимации ритма */
+.danger-button:active {
+  box-shadow: 0 2px 0 #c62828, 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================
+   SESSION SCREEN
+   ============================================ */
+#session-screen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--session-bg-start), var(--session-bg-end));
+  padding: 32px 20px;
+}
+
+.session-layout {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Timer */
+.timer {
+  font-size: 5rem;
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5), 0 0 40px rgba(255, 255, 255, 0.2);
+  line-height: 1;
+}
+
+/* Canvas */
 #rhythm-canvas {
   display: block;
   width: 100%;
   height: 400px;
-  margin-bottom: 20px;
+  border-radius: 20px;
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.15);
 }
 
-/* Таймер на Session Screen */
-.timer {
-  font-size: 96px;
-  font-weight: bold;
-  color: var(--secondary-color);
-  text-align: center;
-  margin: 20px 0;
+/* Metronome indicator — скрыт, не несёт ценности для ребёнка/педагога */
+.indicator {
+  display: none;
 }
 
-/* Stats Screen */
+/* Session buttons */
+#session-screen .primary-button {
+  max-width: 320px;
+}
+
+/* ============================================
+   STATS SCREEN
+   ============================================ */
 #stats-screen {
-  max-width: 500px;
-  margin: 0 auto;
-  text-align: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--stats-bg-start), var(--stats-bg-end));
+  padding: 40px 20px;
 }
 
+.stats-layout {
+  max-width: 720px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Title with pulse animation */
+.stats-title {
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: pulse-title 2s ease-in-out infinite;
+}
+
+@keyframes pulse-title {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stats-title {
+    animation: none;
+  }
+}
+
+/* Stats cards row */
 .stats-container {
   display: flex;
-  flex-direction: column;
-  gap: 30px;
-  margin: 40px 0;
+  flex-direction: row;
+  gap: 16px;
+  margin: 32px 0;
 }
 
 .stat-item {
-  background-color: #f0f0f0;
-  border-radius: 16px;
-  padding: 30px;
+  flex: 1;
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 24px 16px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  border-top: 5px solid transparent;
+  position: relative;
+}
+
+.stat-item--perfect {
+  border-top-color: var(--color-perfect);
+}
+
+.stat-item--good {
+  border-top-color: var(--color-good);
+}
+
+.stat-item--miss {
+  border-top-color: var(--color-miss);
+}
+
+.stat-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
 }
 
 .stat-value {
-  font-size: 72px;
-  font-weight: bold;
-  color: var(--primary-color);
+  font-size: 3.5rem;
+  font-weight: 900;
+  line-height: 1.1;
 }
 
-/* Цвета зон точности */
-.stat-perfect { color: #4CAF50; }
-.stat-good { color: #FFC107; }
-.stat-miss { color: #f44336; }
+.stat-perfect { color: var(--color-perfect); }
+.stat-good { color: var(--color-good); }
+.stat-miss { color: var(--color-miss); }
 
 .stat-label {
-  font-size: 24px;
+  font-size: 1rem;
   color: #666;
-  margin-top: 10px;
+  margin-top: 8px;
+  font-weight: 700;
 }
 
-/* Вторичная статистика (время) */
+/* Decorative dots */
+.stats-layout::before,
+.stats-layout::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.stats-layout::before {
+  width: 120px;
+  height: 120px;
+  background: #fff;
+  top: -30px;
+  right: -20px;
+}
+
+.stats-layout::after {
+  width: 80px;
+  height: 80px;
+  background: #fff;
+  bottom: 40px;
+  left: -15px;
+}
+
+/* Secondary stats */
 .stats-secondary {
-  margin: 20px 0 30px;
-  padding: 15px;
-  background-color: #f0f0f0;
-  border-radius: 12px;
+  margin: 0 0 24px;
+  padding: 16px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  text-align: center;
 }
 
 .stat-item-small {
-  font-size: 20px;
-  color: #666;
+  font-size: 1.1rem;
+  color: #555;
 }
 
 .stat-label-small {
-  font-weight: bold;
+  font-weight: 900;
+}
+
+/* Stats button */
+#stats-screen .primary-button {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+/* Mobile: stat cards stack */
+@media (max-width: 768px) {
+  .stats-container {
+    flex-direction: column;
+  }
+
+  .stat-value {
+    font-size: 3rem;
+  }
+
+  .timer {
+    font-size: 4rem;
+  }
+
+  h1 {
+    font-size: 2.2rem;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1200px) {
+  .card {
+    max-width: 540px;
+  }
+
+  .stats-layout {
+    max-width: 840px;
+  }
+
+  .session-layout {
+    max-width: 700px;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* Keyboard focus */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.primary-button:focus-visible {
+  outline-offset: 4px;
+  border-radius: 20px;
+}
+
+input[type="range"]:focus-visible {
+  outline-offset: 6px;
 }

@@ -4,78 +4,89 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Beat Buddy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
   <!-- Setup Screen -->
   <div id="setup-screen">
-    <h1>Beat Buddy</h1>
+    <div class="card">
+      <h1>Beat Buddy</h1>
 
-    <div class="setting-group">
-      <label for="bpm-slider">
-        Темп (BPM):
-        <span id="bpm-value" class="setting-value">60</span>
-      </label>
-      <input type="range" id="bpm-slider" min="50" max="70" value="60" step="1">
+      <div class="setting-group">
+        <label for="bpm-slider">
+          🎵 Темп (BPM):
+          <span id="bpm-value" class="setting-value">60</span>
+        </label>
+        <input type="range" id="bpm-slider" min="50" max="70" value="60" step="1">
+      </div>
+
+      <div class="setting-group">
+        <label for="duration-input">⏱️ Время занятия (минуты):</label>
+        <input type="number" id="duration-input" min="1" max="60" value="5">
+      </div>
+
+      <div class="setting-group">
+        <label>
+          <input type="checkbox" id="dev-mode-checkbox">
+          🛠️ Dev Mode (клавиатура вместо датчика)
+        </label>
+      </div>
+
+      <button id="start-button" class="primary-button">🚀 Старт</button>
     </div>
-
-    <div class="setting-group">
-      <label for="duration-input">Время занятия (минуты):</label>
-      <input type="number" id="duration-input" min="1" max="60" value="5">
-    </div>
-
-    <div class="setting-group">
-      <label>
-        <input type="checkbox" id="dev-mode-checkbox">
-        Dev Mode (клавиатура вместо датчика)
-      </label>
-    </div>
-
-    <button id="start-button" class="primary-button">Старт</button>
   </div>
 
   <!-- Session Screen -->
   <div id="session-screen" style="display: none;">
-    <canvas id="rhythm-canvas" width="800" height="400"></canvas>
-    <div id="timer-display" class="timer"></div>
-    <h2>Занятие идёт</h2>
+    <div class="session-layout">
+      <div id="timer-display" class="timer"></div>
+      <canvas id="rhythm-canvas" width="800" height="400"></canvas>
 
-    <div id="metronome-indicator" class="indicator">
-      <span id="metronome-status">Метроном: ⏸️ Остановлен</span>
+      <div id="metronome-indicator" class="indicator">
+        <span id="metronome-status">Метроном: ⏸️ Остановлен</span>
+      </div>
+
+      <button id="stop-button" class="primary-button danger-button">🛑 Стоп</button>
     </div>
-
-    <button id="stop-button" class="primary-button danger-button">Стоп</button>
   </div>
 
   <!-- Stats Screen -->
   <div id="stats-screen" style="display: none;">
-    <h1>🎉 Результаты</h1>
+    <div class="stats-layout">
+      <h1 class="stats-title">🎉 Результаты</h1>
 
-    <div class="stats-container">
-      <div class="stat-item">
-        <div class="stat-value stat-perfect" id="stats-perfect">0</div>
-        <div class="stat-label">Отлично</div>
+      <div class="stats-container">
+        <div class="stat-item stat-item--perfect">
+          <div class="stat-icon">🌟</div>
+          <div class="stat-value stat-perfect" id="stats-perfect">0</div>
+          <div class="stat-label">Отлично</div>
+        </div>
+
+        <div class="stat-item stat-item--good">
+          <div class="stat-icon">👍</div>
+          <div class="stat-value stat-good" id="stats-good">0</div>
+          <div class="stat-label">Хорошо</div>
+        </div>
+
+        <div class="stat-item stat-item--miss">
+          <div class="stat-icon">💨</div>
+          <div class="stat-value stat-miss" id="stats-miss">0</div>
+          <div class="stat-label">Мимо</div>
+        </div>
       </div>
 
-      <div class="stat-item">
-        <div class="stat-value stat-good" id="stats-good">0</div>
-        <div class="stat-label">Хорошо</div>
+      <div class="stats-secondary">
+        <div class="stat-item-small">
+          <span class="stat-label-small">⏱️ Время:</span>
+          <span id="stats-duration">0:00</span>
+        </div>
       </div>
 
-      <div class="stat-item">
-        <div class="stat-value stat-miss" id="stats-miss">0</div>
-        <div class="stat-label">Мимо</div>
-      </div>
+      <button id="new-session-button" class="primary-button">🔄 Новое занятие</button>
     </div>
-
-    <div class="stats-secondary">
-      <div class="stat-item-small">
-        <span class="stat-label-small">Время:</span>
-        <span id="stats-duration">0:00</span>
-      </div>
-    </div>
-
-    <button id="new-session-button" class="primary-button">Новое занятие</button>
   </div>
 
   <script type="module" src="js/app.js"></script>
