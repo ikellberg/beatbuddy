@@ -1,34 +1,31 @@
 /**
- * Animator — минимальная PixiJS анимация для ритма (без волн).
+ * Animator — владеет PixiJS Application, ticker и lifecycle.
  *
+ * Рисование делегируется текущей локации (LocationRegistry).
  * Публичный API сохранён для app.js: start(), stop(), onHit(result).
- * Визуал: центральный пульс в BPM + короткая подсветка зоны при ударе.
  */
+import * as LocationRegistry from './locations/LocationRegistry.js'
+// Импорт DefaultLocation для side-effect: регистрация в реестре.
+import './locations/DefaultLocation.js'
+
 export class Animator {
   /**
    * @param {HTMLCanvasElement} canvasElement
    * @param {number} bpm
    * @param {number|null} firstBeatTimeSec - время первого бита в шкале performance.now()/1000
+   * @param {string} locationId - id локации из LocationRegistry
    */
-  constructor(canvasElement, bpm, firstBeatTimeSec = null) {
+  constructor(canvasElement, bpm, firstBeatTimeSec = null, locationId = LocationRegistry.getDefaultId()) {
     this.canvas = canvasElement
     this.bpm = bpm
     this.firstBeatTimeSec = Number.isFinite(firstBeatTimeSec) ? firstBeatTimeSec : null
+    this.locationId = locationId
 
     this.running = false
     this.startTime = 0
 
     this.pixiApp = null
-    this.graphics = null
-
-    this.hitFlash = null
-
-    this.colors = {
-      base: 0xDDE6FF,
-      perfect: 0x4CAF50,
-      good: 0xFFC107,
-      miss: 0xF44336
-    }
+    this.location = null
 
     this.status = {
       ok: true,
@@ -37,7 +34,7 @@ export class Animator {
     }
 
     this._tick = this._tick.bind(this)
-    console.log(`[Animator] Создан (PixiJS, minimal): BPM=${bpm}`)
+    console.log(`[Animator] Создан (PixiJS): BPM=${bpm}, location="${locationId}"`)
   }
 
   getStatus() {
@@ -55,6 +52,14 @@ export class Animator {
       return
     }
 
+    // Создать и инициализировать локацию.
+    const container = this.pixiApp.stage
+    const w = this.pixiApp.screen.width
+    const h = this.pixiApp.screen.height
+
+    this.location = LocationRegistry.create(this.locationId)
+    this.location.init(container, w, h)
+
     this.running = true
     this.startTime = performance.now()
     this.pixiApp.ticker.add(this._tick)
@@ -68,10 +73,15 @@ export class Animator {
 
     this.running = false
 
+    // Уничтожить локацию до PixiJS App.
+    if (this.location) {
+      this.location.destroy()
+      this.location = null
+    }
+
     if (this.pixiApp) {
       this.pixiApp.ticker.remove(this._tick)
       this.pixiApp.stage.removeChildren()
-      // Не удаляем shared текстуры Pixi, чтобы не ловить артефакты при повторном старте.
       this.pixiApp.destroy(false, {
         children: true,
         texture: false,
@@ -80,8 +90,6 @@ export class Animator {
     }
 
     this.pixiApp = null
-    this.graphics = null
-    this.hitFlash = null
 
     console.log('[Animator] Остановлен')
   }
@@ -90,7 +98,7 @@ export class Animator {
    * @param {{zone: 'perfect' | 'good' | 'miss'}} result
    */
   onHit(result) {
-    if (!this.running || !this.graphics) {
+    if (!this.running || !this.location) {
       return
     }
 
@@ -98,15 +106,7 @@ export class Animator {
       ? result.zone
       : 'miss'
 
-    const flashMs = zone === 'perfect' ? 320 : zone === 'good' ? 240 : 180
-    const maxAlpha = zone === 'perfect' ? 0.55 : zone === 'good' ? 0.45 : 0.35
-
-    this.hitFlash = {
-      zone,
-      start: performance.now(),
-      durationMs: flashMs,
-      maxAlpha
-    }
+    this.location.onHit(zone)
   }
 
   _initPixi() {
@@ -164,9 +164,6 @@ export class Animator {
         resolution: Math.min(globalThis.devicePixelRatio || 1, 2)
       })
 
-      this.graphics = new pixi.Graphics()
-      this.pixiApp.stage.addChild(this.graphics)
-
       this.status = {
         ok: true,
         mode: 'pixi',
@@ -197,57 +194,15 @@ export class Animator {
   }
 
   _tick() {
-    if (!this.running || !this.pixiApp || !this.graphics) {
+    if (!this.running || !this.pixiApp || !this.location) {
       return
     }
-
-    const width = this.pixiApp.screen.width
-    const height = this.pixiApp.screen.height
-    const centerX = width / 2
-    const centerY = height / 2
-    const minSide = Math.min(width, height)
 
     const nowSec = performance.now() / 1000
     const beatStartSec = this.firstBeatTimeSec ?? (this.startTime / 1000)
     const beatsFromStart = ((nowSec - beatStartSec) * this.bpm) / 60
     const phase = ((beatsFromStart % 1) + 1) % 1
 
-    // Пик пульса на самом бите (phase=0,1,2...), минимум в середине интервала.
-    const pulse = (Math.cos(phase * Math.PI * 2) + 1) / 2
-
-    const baseRadius = minSide * 0.12
-    const pulseRadius = baseRadius + pulse * (minSide * 0.05)
-
-    this.graphics.clear()
-
-    // Базовая мягкая подсветка в такт.
-    this.graphics.beginFill(this.colors.base, 0.16 + pulse * 0.18)
-    this.graphics.drawCircle(centerX, centerY, pulseRadius * 1.8)
-    this.graphics.endFill()
-
-    this.graphics.beginFill(this.colors.base, 0.36 + pulse * 0.22)
-    this.graphics.drawCircle(centerX, centerY, pulseRadius)
-    this.graphics.endFill()
-
-    // Короткая цветовая подсветка зоны попадания.
-    if (this.hitFlash) {
-      const now = performance.now()
-      const progress = (now - this.hitFlash.start) / this.hitFlash.durationMs
-
-      if (progress >= 1) {
-        this.hitFlash = null
-      } else {
-        const fade = 1 - progress
-        const color = this.colors[this.hitFlash.zone]
-        const alpha = this.hitFlash.maxAlpha * fade
-
-        this.graphics.beginFill(color, alpha * 0.22)
-        this.graphics.drawCircle(centerX, centerY, pulseRadius * 2.3)
-        this.graphics.endFill()
-
-        this.graphics.lineStyle(8, color, alpha)
-        this.graphics.drawCircle(centerX, centerY, pulseRadius * 1.25)
-      }
-    }
+    this.location.onBeat(phase)
   }
 }

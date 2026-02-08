@@ -2,6 +2,7 @@ import { MetronomeEngine } from './MetronomeEngine.js'
 import { SensorManager } from './SensorManager.js'
 import { RhythmAnalyzer } from './RhythmAnalyzer.js'
 import { Animator } from './Animator.js'
+import * as LocationRegistry from './locations/LocationRegistry.js'
 
 // Ключи localStorage
 const SETTINGS_KEY = 'beatBuddySettings'
@@ -10,7 +11,8 @@ const SETTINGS_KEY = 'beatBuddySettings'
 const DEFAULT_SETTINGS = {
   bpm: 60,
   duration: 5,
-  devMode: false
+  devMode: false,
+  locationId: LocationRegistry.getDefaultId()
 }
 
 // Элементы UI
@@ -18,6 +20,7 @@ let bpmSlider
 let bpmValue
 let durationInput
 let devModeCheckbox
+let locationSelect
 let startButton
 
 // Session Screen
@@ -63,7 +66,11 @@ function init() {
   bpmValue = document.getElementById('bpm-value')
   durationInput = document.getElementById('duration-input')
   devModeCheckbox = document.getElementById('dev-mode-checkbox')
+  locationSelect = document.getElementById('location-select')
   startButton = document.getElementById('start-button')
+
+  // Заполнить select локациями из реестра
+  populateLocationSelect()
 
   // Получить элементы Session Screen
   sessionScreen = document.getElementById('session-screen')
@@ -89,6 +96,7 @@ function init() {
   bpmSlider.addEventListener('input', onBpmChange)
   durationInput.addEventListener('change', onDurationChange)
   devModeCheckbox.addEventListener('change', onDevModeChange)
+  locationSelect.addEventListener('change', onLocationChange)
   startButton.addEventListener('click', onStartClick)
   stopButton.addEventListener('click', onStopClick)
 
@@ -116,6 +124,9 @@ function loadSettings() {
   bpmValue.textContent = settings.bpm
   durationInput.value = settings.duration
   devModeCheckbox.checked = settings.devMode
+  if (locationSelect) {
+    locationSelect.value = settings.locationId || LocationRegistry.getDefaultId()
+  }
 
   console.log('[App] Настройки загружены:', settings)
 }
@@ -127,7 +138,8 @@ function saveSettings() {
   const settings = {
     bpm: parseInt(bpmSlider.value, 10),
     duration: parseInt(durationInput.value, 10),
-    devMode: devModeCheckbox.checked
+    devMode: devModeCheckbox.checked,
+    locationId: locationSelect ? locationSelect.value : LocationRegistry.getDefaultId()
   }
 
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
@@ -175,6 +187,30 @@ function onDurationChange() {
  */
 function onDevModeChange() {
   saveSettings()
+}
+
+/**
+ * Обработчик изменения локации
+ */
+function onLocationChange() {
+  saveSettings()
+}
+
+/**
+ * Заполнить select локациями из LocationRegistry
+ */
+function populateLocationSelect() {
+  if (!locationSelect) return
+
+  const locations = LocationRegistry.getAll()
+  locationSelect.innerHTML = ''
+
+  for (const loc of locations) {
+    const option = document.createElement('option')
+    option.value = loc.id
+    option.textContent = loc.name
+    locationSelect.appendChild(option)
+  }
 }
 
 /**
@@ -256,7 +292,8 @@ async function onStartClick() {
   const settings = {
     bpm: parseInt(bpmSlider.value, 10),
     duration: parseInt(durationInput.value, 10),
-    devMode: devModeCheckbox.checked
+    devMode: devModeCheckbox.checked,
+    locationId: locationSelect ? locationSelect.value : LocationRegistry.getDefaultId()
   }
 
   console.log('[App] Старт занятия с настройками:', settings)
@@ -308,7 +345,7 @@ async function onStartClick() {
     console.error('[App] Canvas не найден')
     return
   }
-  animator = new Animator(canvas, settings.bpm, firstBeatTime)
+  animator = new Animator(canvas, settings.bpm, firstBeatTime, settings.locationId)
   animator.start()
   const animatorStatus = typeof animator.getStatus === 'function'
     ? animator.getStatus()

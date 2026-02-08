@@ -124,17 +124,21 @@ export class MetronomeEngine {
 
     if (typeof this.audioContext.getOutputTimestamp === 'function') {
       const ts = this.audioContext.getOutputTimestamp()
+      // getOutputTimestamp возвращает {contextTime: 0, performanceTime: 0} до рендеринга
+      // первого блока аудио (спецификация W3C). Нули — невалидные значения,
+      // их использование даёт случайный фазовый сдвиг.
       if (
         ts &&
-        Number.isFinite(ts.contextTime) &&
+        ts.performanceTime > 0 &&
+        ts.contextTime > 0 &&
         Number.isFinite(ts.performanceTime)
       ) {
         return (ts.performanceTime / 1000) + (this.firstClickTime - ts.contextTime)
       }
     }
 
-    // Fallback для окружений без getOutputTimestamp.
-    // Это приближённая оценка и она менее точна на старых браузерах.
+    // Fallback: прямой расчёт через currentTime и performance.now().
+    // Работает надёжно сразу после start(), пока getOutputTimestamp ещё не отдаёт данные.
     const untilFirstBeat = this.firstClickTime - this.audioContext.currentTime
     return (performance.now() / 1000) + Math.max(0, untilFirstBeat) + this.getOutputLatencySeconds()
   }
