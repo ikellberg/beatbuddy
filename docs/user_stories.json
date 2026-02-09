@@ -305,7 +305,7 @@
         "Streak корректно сбрасывается при старте новой сессии"
       ],
       "priority": 17,
-      "passes": false,
+      "passes": true,
       "technicalNotes": "Добавить Session UI-элемент для combo и best combo. Обновлять состояние в app.js после recordHit(). При желании прокидывать streak в Animator для усиления эффектов.",
       "relatedFiles": ["src/web/js/app.js", "src/web/index.html", "src/web/styles/main.css", "src/web/js/Animator.js"]
     },
