@@ -1,7 +1,7 @@
 {
   "project": "Beat Buddy",
   "version": "2.1.0",
-  "last_updated": "2026-02-09",
+  "last_updated": "2026-02-10",
   "branchName": "main",
   "userStories": [
     {
@@ -341,9 +341,9 @@
         "Есть fallback на менее тяжёлый вариант эффекта при низком FPS"
       ],
       "priority": 19,
-      "passes": false,
-      "technicalNotes": "Сделать слой edge-overlay (PixiJS graphics/filter или CSS overlay) на уровне Session контейнера. Центр экрана оставить чистым, акцент по границам. Поддержать degrade для слабого GPU.",
-      "relatedFiles": ["src/web/js/Animator.js", "src/web/js/locations/RunnerLocation.js", "src/web/styles/main.css", "src/web/index.html"]
+      "passes": true,
+      "technicalNotes": "В RunnerLocation добавлен edge-overlay слой (Pixi Graphics, blendMode ADD) с цветовым маппингом по зонам: perfect=green, good=amber, miss=red. Для зон заданы разные пресеты длительности/интенсивности/глубины; для perfect добавлен дополнительный импульс для лучшей различимости. Добавлен FPS-based degrade режим с hysteresis (normal<->degrade), где эффект упрощается (меньше полос, ниже alpha/depth) при просадке FPS. Старый miss shake-overlay заменён edge-вспышкой; cleanup edge-состояния выполняется в destroy().",
+      "relatedFiles": ["src/web/js/locations/RunnerLocation.js", "docs/plans/US-019-edge-vspyshki.md", "docs/reviews/US-019-plan-review.md", "docs/reviews/US-019-code-review.md"]
     }
   ]
 }

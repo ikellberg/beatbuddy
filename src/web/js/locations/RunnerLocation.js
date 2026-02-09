@@ -29,6 +29,33 @@ const SPEECH_COOLDOWN_MS = 420
 const SPEECH_FADE_IN_MS = 180
 const SPEECH_MIN_EVENTS = 2
 const SPEECH_MAX_EVENTS = 5
+const EDGE_FLASH_BANDS = 4
+const EDGE_FLASH_BANDS_DEGRADE = 2
+const EDGE_FLASH_PRESETS = {
+  perfect: {
+    durationMs: 500,
+    peakAlpha: 0.78,
+    depthFactor: 0.16,
+    pulseCount: 2
+  },
+  good: {
+    durationMs: 390,
+    peakAlpha: 0.54,
+    depthFactor: 0.13,
+    pulseCount: 1
+  },
+  miss: {
+    durationMs: 320,
+    peakAlpha: 0.72,
+    depthFactor: 0.155,
+    pulseCount: 1
+  }
+}
+const EDGE_FPS_LOW_THRESHOLD = 45
+const EDGE_FPS_RECOVER_THRESHOLD = 55
+const EDGE_FPS_LOW_FRAMES_TO_DEGRADE = 24
+const EDGE_FPS_HIGH_FRAMES_TO_RECOVER = 36
+const EDGE_FPS_EMA_ALPHA = 0.12
 
 const PALETTE = {
   skyTop: 0x87D8FF,
@@ -43,7 +70,7 @@ const PALETTE = {
   dirt: 0x8E6541,
 
   perfect: 0x43D66E,
-  good: 0xFFC94D,
+  good: 0xFFB300,
   miss: 0xF06B6B,
   dust: 0x9A7A5D
 }
@@ -68,6 +95,7 @@ function createRunnerLocation() {
   let cloudsGraphics = null
   let groundOverlay = null
   let effectsGraphics = null
+  let edgeFlashGraphics = null
   let speechGraphics = null
 
   // Sprites
@@ -98,6 +126,12 @@ function createRunnerLocation() {
   let speechLastShownAt = 0
   let speechLastByGroup = { positive: '', miss: '' }
   let speechEventsUntilByGroup = { positive: 2, miss: 2 }
+  let activeEdgeFlash = null
+  let edgeFlashMode = 'normal'
+  let edgeLastFrameAt = 0
+  let edgeFpsEma = 60
+  let edgeLowFpsFrames = 0
+  let edgeHighFpsFrames = 0
 
   return {
     init(pixiContainer, w, h) {
@@ -183,6 +217,11 @@ function createRunnerLocation() {
       effectsGraphics = new pixi.Graphics()
       container.addChild(effectsGraphics)
 
+      // --- Edge flash (Graphics): above effects, below speech ---
+      edgeFlashGraphics = new pixi.Graphics()
+      edgeFlashGraphics.blendMode = pixi.BLEND_MODES.ADD
+      container.addChild(edgeFlashGraphics)
+
       speechGraphics = new pixi.Graphics()
       container.addChild(speechGraphics)
 
@@ -215,6 +254,7 @@ function createRunnerLocation() {
       if (!container) return
 
       const now = performance.now()
+      _updateEdgePerformanceMode(now)
 
       _updateCharacterState(now)
 
@@ -245,6 +285,7 @@ function createRunnerLocation() {
       _drawForegroundShade(effectsGraphics)
       _drawEffects(effectsGraphics, now, pose)
       _drawParticles(effectsGraphics, now)
+      _drawEdgeFlash(edgeFlashGraphics, now)
       _drawSpeechBubble(speechGraphics, now, pose)
     },
 
@@ -254,6 +295,7 @@ function createRunnerLocation() {
       const now = performance.now()
 
       if (zone === 'perfect') {
+        _startEdgeFlash('perfect', now)
         charState = 'jumping'
         charStateStart = now
         charJumpHeight = PERFECT_JUMP_HEIGHT
@@ -267,6 +309,7 @@ function createRunnerLocation() {
       }
 
       if (zone === 'good') {
+        _startEdgeFlash('good', now)
         charState = 'jumping'
         charStateStart = now
         charJumpHeight = GOOD_JUMP_HEIGHT
@@ -279,6 +322,7 @@ function createRunnerLocation() {
       }
 
       if (zone === 'miss') {
+        _startEdgeFlash('miss', now)
         _showSpeech('miss', 'miss', now)
         if (charState === 'stumbling') return
         _startStumble(now)
@@ -300,6 +344,7 @@ function createRunnerLocation() {
       if (cloudsGraphics) cloudsGraphics.destroy()
       if (groundOverlay) groundOverlay.destroy()
       if (effectsGraphics) effectsGraphics.destroy()
+      if (edgeFlashGraphics) edgeFlashGraphics.destroy()
       if (speechGraphics) speechGraphics.destroy()
       if (speechText) speechText.destroy()
 
@@ -322,6 +367,7 @@ function createRunnerLocation() {
       cloudsGraphics = null
       groundOverlay = null
       effectsGraphics = null
+      edgeFlashGraphics = null
       speechGraphics = null
       bgTiling = null
       groundTiling = null
@@ -330,6 +376,12 @@ function createRunnerLocation() {
       heroShadow = null
       speechText = null
       speechTextStyle = null
+      activeEdgeFlash = null
+      edgeFlashMode = 'normal'
+      edgeLastFrameAt = 0
+      edgeFpsEma = 60
+      edgeLowFpsFrames = 0
+      edgeHighFpsFrames = 0
 
       particles = []
       effects = []
@@ -462,8 +514,80 @@ function createRunnerLocation() {
     charState = 'stumbling'
     charStateStart = now
     _switchHeroAnimation('dead', false)
-    _addEffect('shake', now, 300, 'miss')
     _burstDust(now)
+  }
+
+  function _startEdgeFlash(zone, now) {
+    const preset = EDGE_FLASH_PRESETS[zone] || EDGE_FLASH_PRESETS.miss
+    const color = zone === 'perfect'
+      ? PALETTE.perfect
+      : zone === 'good'
+        ? PALETTE.good
+        : PALETTE.miss
+    const currentAlpha = _getCurrentEdgeFlashAlpha(now)
+    const mergedPeak = Math.max(currentAlpha, preset.peakAlpha)
+
+    activeEdgeFlash = {
+      zone,
+      color,
+      startedAt: now,
+      durationMs: preset.durationMs,
+      peakAlpha: mergedPeak,
+      depthFactor: preset.depthFactor,
+      pulseCount: preset.pulseCount || 1
+    }
+  }
+
+  function _updateEdgePerformanceMode(now) {
+    if (!Number.isFinite(now)) return
+    if (edgeLastFrameAt <= 0) {
+      edgeLastFrameAt = now
+      return
+    }
+
+    const dt = now - edgeLastFrameAt
+    edgeLastFrameAt = now
+    if (dt <= 0) return
+
+    const fps = 1000 / dt
+    edgeFpsEma = edgeFpsEma + (fps - edgeFpsEma) * EDGE_FPS_EMA_ALPHA
+
+    if (edgeFlashMode === 'normal') {
+      if (edgeFpsEma < EDGE_FPS_LOW_THRESHOLD) {
+        edgeLowFpsFrames++
+        if (edgeLowFpsFrames >= EDGE_FPS_LOW_FRAMES_TO_DEGRADE) {
+          edgeFlashMode = 'degrade'
+          edgeLowFpsFrames = 0
+          edgeHighFpsFrames = 0
+          console.log(`[RunnerLocation] Edge flash mode: normal -> degrade (fps=${edgeFpsEma.toFixed(1)})`)
+        }
+      } else {
+        edgeLowFpsFrames = 0
+      }
+      return
+    }
+
+    if (edgeFpsEma > EDGE_FPS_RECOVER_THRESHOLD) {
+      edgeHighFpsFrames++
+      if (edgeHighFpsFrames >= EDGE_FPS_HIGH_FRAMES_TO_RECOVER) {
+        edgeFlashMode = 'normal'
+        edgeHighFpsFrames = 0
+        edgeLowFpsFrames = 0
+        console.log(`[RunnerLocation] Edge flash mode: degrade -> normal (fps=${edgeFpsEma.toFixed(1)})`)
+      }
+    } else {
+      edgeHighFpsFrames = 0
+    }
+  }
+
+  function _getCurrentEdgeFlashAlpha(now) {
+    if (!activeEdgeFlash) return 0
+    const elapsed = now - activeEdgeFlash.startedAt
+    if (elapsed <= 0) return activeEdgeFlash.peakAlpha
+    if (elapsed >= activeEdgeFlash.durationMs) return 0
+    const progress = elapsed / activeEdgeFlash.durationMs
+    const fade = (1 - progress) * (1 - progress)
+    return activeEdgeFlash.peakAlpha * fade
   }
 
   function _updateCharacterState(now) {
@@ -667,11 +791,47 @@ function createRunnerLocation() {
         g.drawEllipse(pose.x - minSide * 0.028, pose.y + minSide * 0.015, minSide * (0.04 + p * 0.02), minSide * 0.018)
         g.drawEllipse(pose.x + minSide * 0.028, pose.y + minSide * 0.015, minSide * (0.04 + p * 0.02), minSide * 0.018)
         g.endFill()
-      } else if (e.type === 'shake') {
-        g.beginFill(PALETTE.miss, 0.09 * fade)
-        g.drawRect(0, 0, width, height)
-        g.endFill()
       }
+    }
+  }
+
+  function _drawEdgeFlash(g, now) {
+    if (!g) return
+    g.clear()
+
+    if (!activeEdgeFlash) return
+
+    const elapsed = now - activeEdgeFlash.startedAt
+    if (elapsed >= activeEdgeFlash.durationMs) {
+      activeEdgeFlash = null
+      return
+    }
+
+    const progress = elapsed / activeEdgeFlash.durationMs
+    const fade = (1 - progress) * (1 - progress)
+    const pulseCount = activeEdgeFlash.pulseCount || 1
+    const pulseBoost = pulseCount > 1
+      ? 0.86 + 0.14 * Math.sin(progress * Math.PI * pulseCount * 2)
+      : 1
+    const modeAlphaFactor = edgeFlashMode === 'degrade' ? 0.68 : 1
+    const alpha = activeEdgeFlash.peakAlpha * fade * modeAlphaFactor * pulseBoost
+    const color = activeEdgeFlash.color
+    const modeDepthFactor = edgeFlashMode === 'degrade' ? 0.72 : 1
+    const edgeDepth = Math.max(16, minSide * (activeEdgeFlash.depthFactor || 0.13) * modeDepthFactor)
+    const bandCount = edgeFlashMode === 'degrade' ? EDGE_FLASH_BANDS_DEGRADE : EDGE_FLASH_BANDS
+
+    for (let i = 0; i < bandCount; i++) {
+      const bandOffset = (edgeDepth / bandCount) * i
+      const bandThickness = edgeDepth / bandCount
+      const falloff = 1 - i / bandCount
+      const bandAlpha = alpha * falloff
+
+      g.beginFill(color, bandAlpha)
+      g.drawRect(0, bandOffset, width, bandThickness)
+      g.drawRect(0, height - bandOffset - bandThickness, width, bandThickness)
+      g.drawRect(bandOffset, 0, bandThickness, height)
+      g.drawRect(width - bandOffset - bandThickness, 0, bandThickness, height)
+      g.endFill()
     }
   }
 
