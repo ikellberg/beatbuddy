@@ -266,6 +266,7 @@ select:focus {
   flex-direction: column;
   align-items: center;
   gap: 20px;
+  position: relative;
 }
 
 /* Timer */
@@ -327,6 +328,53 @@ select:focus {
   display: none;
 }
 
+.dino-speech {
+  min-height: 58px;
+  max-width: min(520px, 92vw);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dino-speech span {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 16px;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  background: rgba(17, 24, 39, 0.72);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1.25;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.dino-speech--positive span {
+  border-color: rgba(129, 248, 169, 0.95);
+  background: rgba(10, 60, 33, 0.78);
+}
+
+.dino-speech--miss span {
+  border-color: rgba(255, 178, 178, 0.95);
+  background: rgba(94, 25, 25, 0.8);
+}
+
+.dino-speech--hidden {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.dino-speech--fade-out {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
 /* Bump animation on each increment */
 .streak--bump {
   animation: streak-bump 0.25s ease-out;
@@ -366,6 +414,13 @@ select:focus {
   .streak--bump,
   .streak-20 {
     animation: none;
+  }
+
+  .dino-speech,
+  .dino-speech--hidden,
+  .dino-speech--fade-out {
+    transition: none;
+    transform: none;
   }
 }
 

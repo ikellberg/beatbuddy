@@ -323,9 +323,9 @@
         "Реплики можно отключить флагом/конфигом для быстрых A/B тестов"
       ],
       "priority": 18,
-      "passes": false,
-      "technicalNotes": "Реализовать speech bubble/overlay в RunnerLocation или поверх Session UI. Добавить словари фраз по зонам. Ввести защиту от спама (cooldown на показ).",
-      "relatedFiles": ["src/web/js/locations/RunnerLocation.js", "src/web/styles/main.css", "src/web/js/app.js"]
+      "passes": true,
+      "technicalNotes": "Реплики вынесены в общий модуль `DinoPhrases.js` (словарь + выбор без повтора подряд). Для `runner` реплики рисуются в Pixi-сцене как thought-bubble рядом с героем (плавный fade-in/fade-out, показ не на каждый hit, а случайно раз в 2-5 событий для снижения шума). Для остальных локаций оставлен UI overlay c cooldown и флагом `dinoSpeechEnabled` в localStorage (default true для backward compatibility).",
+      "relatedFiles": ["src/web/js/DinoPhrases.js", "src/web/js/locations/RunnerLocation.js", "src/web/js/app.js", "src/web/index.html", "src/web/styles/main.css"]
     },
     {
       "id": "US-019",

@@ -9,6 +9,7 @@
 
 import { register } from './LocationRegistry.js'
 import { getTextures, preloadAll } from './RunnerAssets.js'
+import { DINO_PHRASES, pickPhraseWithoutImmediateRepeat } from '../DinoPhrases.js'
 
 const MAX_PARTICLES = 20
 const MAX_EFFECTS = 6
@@ -20,6 +21,14 @@ const GOOD_JUMP_HEIGHT = 0.11
 
 const GRASS_TUFT_COUNT = 24
 const CLOUD_COUNT = 5
+
+// Runner bubble lives inside dense Pixi scene near the hero, so keep it longer.
+const SPEECH_TTL_MS = 2200
+const SPEECH_FADE_MS = 420
+const SPEECH_COOLDOWN_MS = 420
+const SPEECH_FADE_IN_MS = 180
+const SPEECH_MIN_EVENTS = 2
+const SPEECH_MAX_EVENTS = 5
 
 const PALETTE = {
   skyTop: 0x87D8FF,
@@ -59,6 +68,7 @@ function createRunnerLocation() {
   let cloudsGraphics = null
   let groundOverlay = null
   let effectsGraphics = null
+  let speechGraphics = null
 
   // Sprites
   let bgTiling = null
@@ -66,6 +76,8 @@ function createRunnerLocation() {
   let dirtTiling = null
   let heroSprite = null
   let heroShadow = null
+  let speechText = null
+  let speechTextStyle = null
 
   // State pools
   let particles = []
@@ -80,6 +92,12 @@ function createRunnerLocation() {
   let charStateStart = 0
   let charJumpHeight = 0
   let currentAnim = 'run'
+  let speechMessage = ''
+  let speechZone = 'good'
+  let speechShownAt = 0
+  let speechLastShownAt = 0
+  let speechLastByGroup = { positive: '', miss: '' }
+  let speechEventsUntilByGroup = { positive: 2, miss: 2 }
 
   return {
     init(pixiContainer, w, h) {
@@ -165,6 +183,22 @@ function createRunnerLocation() {
       effectsGraphics = new pixi.Graphics()
       container.addChild(effectsGraphics)
 
+      speechGraphics = new pixi.Graphics()
+      container.addChild(speechGraphics)
+
+      speechTextStyle = new pixi.TextStyle({
+        fontFamily: 'Nunito, Segoe UI, Arial, sans-serif',
+        fontSize: Math.max(14, Math.min(18, Math.round(minSide * 0.03))),
+        fontWeight: '900',
+        fill: 0x161616,
+        align: 'center',
+        lineJoin: 'round'
+      })
+      speechText = new pixi.Text('', speechTextStyle)
+      speechText.anchor.set(0.5, 0.5)
+      speechText.visible = false
+      container.addChild(speechText)
+
       _seedWorldDecor()
       _initPools()
       _resetState()
@@ -211,6 +245,7 @@ function createRunnerLocation() {
       _drawForegroundShade(effectsGraphics)
       _drawEffects(effectsGraphics, now, pose)
       _drawParticles(effectsGraphics, now)
+      _drawSpeechBubble(speechGraphics, now, pose)
     },
 
     onHit(zone) {
@@ -223,6 +258,7 @@ function createRunnerLocation() {
         charStateStart = now
         charJumpHeight = PERFECT_JUMP_HEIGHT
 
+        _showSpeech('positive', 'perfect', now)
         _switchHeroAnimation('jump', false)
         _addEffect('ring', now, 460, 'perfect')
         _addEffect('trail', now, 220, 'perfect')
@@ -235,6 +271,7 @@ function createRunnerLocation() {
         charStateStart = now
         charJumpHeight = GOOD_JUMP_HEIGHT
 
+        _showSpeech('positive', 'good', now)
         _switchHeroAnimation('jump', false)
         _addEffect('ring', now, 340, 'good')
         _burstAroundHero(now, 6, minSide * 0.18, PALETTE.good)
@@ -242,6 +279,7 @@ function createRunnerLocation() {
       }
 
       if (zone === 'miss') {
+        _showSpeech('miss', 'miss', now)
         if (charState === 'stumbling') return
         _startStumble(now)
       }
@@ -262,6 +300,8 @@ function createRunnerLocation() {
       if (cloudsGraphics) cloudsGraphics.destroy()
       if (groundOverlay) groundOverlay.destroy()
       if (effectsGraphics) effectsGraphics.destroy()
+      if (speechGraphics) speechGraphics.destroy()
+      if (speechText) speechText.destroy()
 
       if (bgContainer) bgContainer.destroy()
       if (groundContainer) groundContainer.destroy()
@@ -282,11 +322,14 @@ function createRunnerLocation() {
       cloudsGraphics = null
       groundOverlay = null
       effectsGraphics = null
+      speechGraphics = null
       bgTiling = null
       groundTiling = null
       dirtTiling = null
       heroSprite = null
       heroShadow = null
+      speechText = null
+      speechTextStyle = null
 
       particles = []
       effects = []
@@ -372,6 +415,47 @@ function createRunnerLocation() {
     charStateStart = 0
     charJumpHeight = 0
     currentAnim = 'run'
+    speechMessage = ''
+    speechZone = 'good'
+    speechShownAt = 0
+    speechLastShownAt = 0
+    speechLastByGroup = { positive: '', miss: '' }
+    speechEventsUntilByGroup = {
+      positive: _nextSpeechEventGap(),
+      miss: _nextSpeechEventGap()
+    }
+  }
+
+  function _nextSpeechEventGap() {
+    const span = SPEECH_MAX_EVENTS - SPEECH_MIN_EVENTS + 1
+    return SPEECH_MIN_EVENTS + Math.floor(Math.random() * span)
+  }
+
+  function _pickSpeech(group) {
+    const list = DINO_PHRASES[group]
+    if (!list || list.length === 0) return ''
+    const next = pickPhraseWithoutImmediateRepeat(list, speechLastByGroup[group] || '')
+    speechLastByGroup[group] = next
+    return next
+  }
+
+  function _showSpeech(group, zone, now) {
+    // In runner we intentionally show speech less frequently (every 2-5 events)
+    // to avoid visual overload over fast jump/stumble feedback.
+    const remaining = speechEventsUntilByGroup[group] ?? _nextSpeechEventGap()
+    if (remaining > 1) {
+      speechEventsUntilByGroup[group] = remaining - 1
+      return
+    }
+    speechEventsUntilByGroup[group] = _nextSpeechEventGap()
+
+    if (now - speechLastShownAt < SPEECH_COOLDOWN_MS) return
+    const phrase = _pickSpeech(group)
+    if (!phrase) return
+    speechMessage = phrase
+    speechZone = zone
+    speechShownAt = now
+    speechLastShownAt = now
   }
 
   function _startStumble(now) {
@@ -589,6 +673,99 @@ function createRunnerLocation() {
         g.endFill()
       }
     }
+  }
+
+  function _drawSpeechBubble(g, now, pose) {
+    if (!g || !speechText) return
+
+    g.clear()
+
+    const elapsed = now - speechShownAt
+    if (!speechMessage || elapsed >= SPEECH_TTL_MS) {
+      speechMessage = ''
+      speechText.visible = false
+      return
+    }
+
+    const fadeStart = SPEECH_TTL_MS - SPEECH_FADE_MS
+    const fadeOutAlpha = elapsed > fadeStart
+      ? Math.max(0, 1 - (elapsed - fadeStart) / SPEECH_FADE_MS)
+      : 1
+    const fadeInProgress = Math.min(1, elapsed / SPEECH_FADE_IN_MS)
+    const fadeInAlpha = 1 - Math.pow(1 - fadeInProgress, 3)
+    const alpha = fadeOutAlpha * fadeInAlpha
+    const popScale = 0.9 + 0.1 * fadeInAlpha
+
+    speechText.text = speechMessage
+    speechText.alpha = alpha
+    speechText.visible = true
+
+    const bubbleW = Math.min(width * 0.37, Math.max(minSide * 0.19, speechText.width + minSide * 0.09))
+    const bubbleH = Math.max(minSide * 0.085, speechText.height + minSide * 0.075)
+    const radius = minSide * 0.018
+
+    const rawX = pose.x + minSide * 0.26
+    const bubbleX = Math.min(width - bubbleW * 0.5 - minSide * 0.02, Math.max(bubbleW * 0.5 + minSide * 0.02, rawX))
+    const bubbleY = Math.max(minSide * 0.06 + bubbleH * 0.5, pose.y - minSide * 0.34 - bubbleH * 0.5)
+
+    const isMiss = speechZone === 'miss'
+
+    // Thought bubble: cloud-like contour + two small circles to the hero.
+    const lobeScale = isMiss ? 1.12 : 1
+    _drawCloudBubble(g, bubbleX, bubbleY, bubbleW * lobeScale * popScale, bubbleH * lobeScale * popScale, radius, alpha)
+
+    // Keep a subtle "thought" trail without pointing directly at the hero.
+    const c1x = bubbleX - bubbleW * 0.26
+    const c1y = bubbleY + bubbleH * 0.55
+    const c2x = c1x - minSide * 0.035
+    const c2y = c1y + minSide * 0.042
+    g.lineStyle(minSide * 0.005, 0x111111, 0.95 * alpha)
+    g.beginFill(0xFFFFFF, 0.96 * alpha)
+    g.drawCircle(c1x, c1y, minSide * 0.017)
+    g.endFill()
+    g.beginFill(0xFFFFFF, 0.96 * alpha)
+    g.drawCircle(c2x, c2y, minSide * 0.011)
+    g.endFill()
+    g.lineStyle(0)
+
+    speechText.style.fill = isMiss ? 0x5A1212 : 0x1B1B1B
+    speechText.scale.set(0.93 + 0.07 * fadeInAlpha)
+    speechText.x = bubbleX
+    speechText.y = bubbleY
+  }
+
+  function _drawCloudBubble(g, cx, cy, w, h, radius, alpha) {
+    const rx = w * 0.5
+    const ry = h * 0.5
+    const bumps = [1.05, 0.95, 1.08, 0.92, 1.06, 0.94, 1.03, 0.96, 1.04, 0.93]
+    const points = []
+
+    for (let i = 0; i < bumps.length; i++) {
+      const a = (-Math.PI / 2) + (Math.PI * 2 * i / bumps.length)
+      const br = bumps[i]
+      points.push({
+        x: cx + Math.cos(a) * rx * br,
+        y: cy + Math.sin(a) * ry * br
+      })
+    }
+
+    const firstMid = {
+      x: (points[0].x + points[1].x) * 0.5,
+      y: (points[0].y + points[1].y) * 0.5
+    }
+
+    g.lineStyle(Math.max(2, radius * 0.55), 0x111111, 0.96 * alpha)
+    g.beginFill(0xFFFFFF, 0.97 * alpha)
+    g.moveTo(firstMid.x, firstMid.y)
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i]
+      const n = points[(i + 1) % points.length]
+      const midX = (p.x + n.x) * 0.5
+      const midY = (p.y + n.y) * 0.5
+      g.quadraticCurveTo(p.x, p.y, midX, midY)
+    }
+    g.closePath()
+    g.endFill()
   }
 
   function _drawParticles(g, now) {
