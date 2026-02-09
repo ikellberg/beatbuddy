@@ -47,7 +47,14 @@ let statsPerfect = null
 let statsGood = null
 let statsMiss = null
 let statsDuration = null
+let statsBestStreak = null
 let sessionStartTimestamp = null
+
+// Streak display
+let streakDisplay = null
+let streakValue = null
+let streakBestValue = null
+let committedBestStreak = 0
 
 // Таймер занятия
 let timerDisplay = null
@@ -84,7 +91,13 @@ function init() {
   statsGood = document.getElementById('stats-good')
   statsMiss = document.getElementById('stats-miss')
   statsDuration = document.getElementById('stats-duration')
+  statsBestStreak = document.getElementById('stats-best-streak')
   document.getElementById('new-session-button').addEventListener('click', onNewSessionClick)
+
+  // Streak display
+  streakDisplay = document.getElementById('streak-display')
+  streakValue = document.getElementById('streak-value')
+  streakBestValue = document.getElementById('streak-best-value')
 
   // Получить элемент таймера
   timerDisplay = document.getElementById('timer-display')
@@ -285,6 +298,50 @@ function onTimerTick() {
   updateTimerDisplay(remainingMs)
 }
 
+/** Пороги streak для визуальных эффектов */
+const STREAK_THRESHOLDS = [20, 10, 5]
+
+/**
+ * Обновить streak-дисплей на Session Screen
+ * @param {number} streak - текущий streak
+ * @param {number} bestStreak - лучший streak за сессию
+ * @param {number} misses - количество miss
+ */
+function updateStreakDisplay(streak, bestStreak = 0, misses = 0) {
+  if (!streakDisplay || !streakValue || !streakBestValue) return
+
+  streakValue.textContent = streak
+  streakBestValue.textContent = bestStreak
+  const shouldShowBest = bestStreak > 0 && misses > 0
+  streakBestValue.parentElement?.classList.toggle('streak-best--hidden', !shouldShowBest)
+
+  // Скрыть только когда нет ни текущей, ни лучшей серии
+  if (streak === 0 && bestStreak === 0) {
+    streakDisplay.classList.remove('streak--visible')
+    streakDisplay.classList.add('streak--hidden')
+  } else {
+    streakDisplay.classList.remove('streak--hidden')
+    streakDisplay.classList.add('streak--visible')
+
+    // Bump-анимация при каждом инкременте
+    streakDisplay.classList.remove('streak--bump')
+    // Force reflow для перезапуска анимации
+    void streakDisplay.offsetWidth
+    streakDisplay.classList.add('streak--bump')
+  }
+
+  // Снять все пороговые классы, поставить актуальный
+  for (const t of STREAK_THRESHOLDS) {
+    streakDisplay.classList.remove(`streak-${t}`)
+  }
+  for (const t of STREAK_THRESHOLDS) {
+    if (streak >= t) {
+      streakDisplay.classList.add(`streak-${t}`)
+      break
+    }
+  }
+}
+
 /**
  * Обработчик клика на кнопку Старт
  */
@@ -304,6 +361,8 @@ async function onStartClick() {
   // Переключить экраны: скрыть Setup, показать Session
   setupScreen.style.display = 'none'
   sessionScreen.style.display = 'block'
+  committedBestStreak = 0
+  updateStreakDisplay(0, 0)
 
   // === ОБРАТНЫЙ ОТСЧЁТ 3-2-1 ===
   const countdownCompleted = await countdown(3)
@@ -385,10 +444,16 @@ async function onStartClick() {
         animator.onHit(result)
       }
 
-      // Логировать текущую статистику каждые 10 ударов
+      // Обновить streak UI
       const stats = rhythmAnalyzer.getAccuracy()
+      if (result.zone === 'miss') {
+        committedBestStreak = Math.max(committedBestStreak, stats.bestStreak)
+      }
+      updateStreakDisplay(stats.streak, committedBestStreak, stats.misses)
+
+      // Логировать текущую статистику каждые 10 ударов
       if (stats.totalStrikes % 10 === 0) {
-        console.log(`[App] Stats: P=${stats.perfectHits} G=${stats.goodHits} M=${stats.misses} (total=${stats.totalStrikes})`)
+        console.log(`[App] Stats: P=${stats.perfectHits} G=${stats.goodHits} M=${stats.misses} streak=${stats.streak} best=${stats.bestStreak} (total=${stats.totalStrikes})`)
       }
     }
   })
@@ -431,10 +496,10 @@ function onStopClick() {
   }
 
   // Собрать статистику ДО обнуления rhythmAnalyzer
-  let stats = { totalStrikes: 0, perfectHits: 0, goodHits: 0, misses: 0 }
+  let stats = { totalStrikes: 0, perfectHits: 0, goodHits: 0, misses: 0, streak: 0, bestStreak: 0 }
   if (rhythmAnalyzer) {
     stats = rhythmAnalyzer.getAccuracy()
-    console.log(`[App] Final stats: P=${stats.perfectHits} G=${stats.goodHits} M=${stats.misses} (total=${stats.totalStrikes})`)
+    console.log(`[App] Final stats: P=${stats.perfectHits} G=${stats.goodHits} M=${stats.misses} best_streak=${stats.bestStreak} (total=${stats.totalStrikes})`)
     rhythmAnalyzer = null
   }
 
@@ -482,6 +547,7 @@ function onStopClick() {
   statsGood.textContent = stats.goodHits
   statsMiss.textContent = stats.misses
   statsDuration.textContent = durationText
+  statsBestStreak.textContent = stats.bestStreak
 
   console.log('[App] Stats Screen активирован')
 }

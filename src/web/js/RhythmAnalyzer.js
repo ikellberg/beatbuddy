@@ -21,6 +21,10 @@ export class RhythmAnalyzer {
     this.perfectHits = 0
     this.goodHits = 0
     this.misses = 0
+
+    // Streak
+    this.streak = 0
+    this.bestStreak = 0
   }
 
   /**
@@ -49,13 +53,18 @@ export class RhythmAnalyzer {
     if (absDeviation <= RhythmAnalyzer.PERFECT_THRESHOLD_MS) {
       zone = 'perfect'
       this.perfectHits++
+      this.streak++
     } else if (absDeviation <= RhythmAnalyzer.GOOD_THRESHOLD_MS) {
       zone = 'good'
       this.goodHits++
+      this.streak++
     } else {
       zone = 'miss'
       this.misses++
+      this.streak = 0
     }
+
+    this.bestStreak = Math.max(this.bestStreak, this.streak)
 
     this.totalStrikes++
 
@@ -64,14 +73,16 @@ export class RhythmAnalyzer {
 
   /**
    * Получить текущую статистику
-   * @returns {{totalStrikes: number, perfectHits: number, goodHits: number, misses: number}}
+   * @returns {{totalStrikes: number, perfectHits: number, goodHits: number, misses: number, streak: number, bestStreak: number}}
    */
   getAccuracy() {
     return {
       totalStrikes: this.totalStrikes,
       perfectHits: this.perfectHits,
       goodHits: this.goodHits,
-      misses: this.misses
+      misses: this.misses,
+      streak: this.streak,
+      bestStreak: this.bestStreak
     }
   }
 
@@ -83,5 +94,7 @@ export class RhythmAnalyzer {
     this.perfectHits = 0
     this.goodHits = 0
     this.misses = 0
+    this.streak = 0
+    this.bestStreak = 0
   }
 }

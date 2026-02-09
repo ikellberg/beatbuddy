@@ -48,6 +48,13 @@
   <div id="session-screen" style="display: none;">
     <div class="session-layout">
       <div id="timer-display" class="timer"></div>
+      <div id="streak-display" class="streak streak--hidden">
+        <div class="streak-current">
+          <span class="streak-icon">🔥</span>
+          <span id="streak-value">0</span>
+        </div>
+        <span class="streak-best">лучшая серия: <span id="streak-best-value">0</span></span>
+      </div>
       <canvas id="rhythm-canvas" width="800" height="400"></canvas>
 
       <div id="metronome-indicator" class="indicator">
@@ -84,6 +91,10 @@
       </div>
 
       <div class="stats-secondary">
+        <div class="stat-item-small">
+          <span class="stat-label-small">🔥 Лучшая серия:</span>
+          <span id="stats-best-streak">0</span>
+        </div>
         <div class="stat-item-small">
           <span class="stat-label-small">⏱️ Время:</span>
           <span id="stats-duration">0:00</span>
