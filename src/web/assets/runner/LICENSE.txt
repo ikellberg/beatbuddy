@@ -1,0 +1,5 @@
+Assets in this directory are licensed under CC0 (Public Domain).
+
+Sources:
+- Free Dino Sprites by GameArt2D — https://www.gameart2d.com/free-dino-sprites.html
+- Free Platformer Game Tileset by GameArt2D — https://www.gameart2d.com/free-platformer-game-tileset.html

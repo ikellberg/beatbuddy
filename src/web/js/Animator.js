@@ -7,6 +7,8 @@
 import * as LocationRegistry from './locations/LocationRegistry.js'
 // Импорт DefaultLocation для side-effect: регистрация в реестре.
 import './locations/DefaultLocation.js'
+import './locations/ForestLocation.js'
+import './locations/RunnerLocation.js'
 
 export class Animator {
   /**
@@ -57,8 +59,20 @@ export class Animator {
     const w = this.pixiApp.screen.width
     const h = this.pixiApp.screen.height
 
-    this.location = LocationRegistry.create(this.locationId)
-    this.location.init(container, w, h)
+    try {
+      this.location = LocationRegistry.create(this.locationId)
+      this.location.init(container, w, h)
+    } catch (error) {
+      console.error('[Animator] Ошибка инициализации локации:', error)
+      this._destroyPixiApp()
+      this.location = null
+      this.status = {
+        ok: false,
+        mode: 'fallback',
+        message: `Анимация недоступна: ошибка локации — ${error.message}`
+      }
+      return
+    }
 
     this.running = true
     this.startTime = performance.now()
@@ -80,13 +94,7 @@ export class Animator {
     }
 
     if (this.pixiApp) {
-      this.pixiApp.ticker.remove(this._tick)
-      this.pixiApp.stage.removeChildren()
-      this.pixiApp.destroy(false, {
-        children: true,
-        texture: false,
-        baseTexture: false
-      })
+      this._destroyPixiApp()
     }
 
     this.pixiApp = null
@@ -175,7 +183,7 @@ export class Animator {
       this.status = {
         ok: false,
         mode: 'fallback',
-        message: 'Анимация недоступна: не удалось инициализировать PixiJS'
+        message: `Анимация недоступна: ${error.message || 'не удалось инициализировать PixiJS'}`
       }
       return false
     }
@@ -203,6 +211,18 @@ export class Animator {
     const beatsFromStart = ((nowSec - beatStartSec) * this.bpm) / 60
     const phase = ((beatsFromStart % 1) + 1) % 1
 
-    this.location.onBeat(phase)
+    this.location.onBeat(phase, beatsFromStart)
+  }
+
+  _destroyPixiApp() {
+    if (!this.pixiApp) return
+    this.pixiApp.ticker.remove(this._tick)
+    this.pixiApp.stage.removeChildren()
+    this.pixiApp.destroy(false, {
+      children: true,
+      texture: false,
+      baseTexture: false
+    })
+    this.pixiApp = null
   }
 }

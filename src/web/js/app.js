@@ -347,6 +347,7 @@ async function onStartClick() {
   }
   animator = new Animator(canvas, settings.bpm, firstBeatTime, settings.locationId)
   animator.start()
+  window.__debugAnimator = settings.devMode ? animator : null
   const animatorStatus = typeof animator.getStatus === 'function'
     ? animator.getStatus()
     : { ok: true, message: 'Animator status unknown' }
@@ -449,6 +450,7 @@ function onStopClick() {
     animator.stop()
     animator = null
   }
+  window.__debugAnimator = null
 
   // Вывести статистику метронома и остановить
   if (metronome) {
