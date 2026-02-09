@@ -2,16 +2,14 @@
  * RunnerLocation — side-scrolling rhythm runner со спрайтовым рендерингом.
  *
  * Герой — AnimatedSprite (дино), фон — TilingSprite с параллаксом,
- * земля — TilingSprite тайлов, препятствия — Sprite пул.
- * Игровая логика идентична процедурной версии: perfect→прыжок, miss→спотыкание,
- * auto-stumble при пропущенном бите.
+ * земля — TilingSprite тайлов.
+ * Реакция героя привязана только к ритм-событиям:
+ * perfect/good→прыжок, miss→спотыкание.
  */
 
 import { register } from './LocationRegistry.js'
 import { getTextures, preloadAll } from './RunnerAssets.js'
 
-const LEAD_IN_BEATS = 3
-const MAX_OBSTACLES = 10
 const MAX_PARTICLES = 20
 const MAX_EFFECTS = 6
 
@@ -41,14 +39,6 @@ const PALETTE = {
   dust: 0x9A7A5D
 }
 
-/** Маппинг type → текстура-ключ, targetH-множитель. */
-const OBSTACLE_MAP = [
-  { key: 'stone', targetMul: 0.06 },
-  { key: 'crate', targetMul: 0.08 },
-  { key: 'bush', targetMul: 0.07 },
-  { key: 'mushroom', targetMul: 0.07 }
-]
-
 function createRunnerLocation() {
   let container = null
   let width = 0
@@ -57,12 +47,11 @@ function createRunnerLocation() {
 
   let groundY = 0
   let charX = 0
-  let obstacleSpacing = 0
+  let scrollStep = 0
 
   // Container tree
   let bgContainer = null
   let groundContainer = null
-  let obstacleContainer = null
   let heroContainer = null
 
   // Graphics layers (redrawn each frame)
@@ -78,12 +67,7 @@ function createRunnerLocation() {
   let heroSprite = null
   let heroShadow = null
 
-  // Obstacle sprite pool
-  let obstacleSprites = []
-  let obstacleShadows = []
-
   // State pools
-  let obstacles = []
   let particles = []
   let effects = []
 
@@ -97,12 +81,6 @@ function createRunnerLocation() {
   let charJumpHeight = 0
   let currentAnim = 'run'
 
-  let prevBeatCount = -1
-  let hitThisBeat = false
-
-  // Asset readiness
-  let assetsReady = false
-
   return {
     init(pixiContainer, w, h) {
       container = pixiContainer
@@ -112,7 +90,7 @@ function createRunnerLocation() {
 
       groundY = h * 0.75
       charX = w * 0.2
-      obstacleSpacing = w * 0.23
+      scrollStep = w * 0.23
 
       const pixi = globalThis.PIXI
       const assets = getTextures()
@@ -120,12 +98,10 @@ function createRunnerLocation() {
       // --- Container tree ---
       bgContainer = new pixi.Container()
       groundContainer = new pixi.Container()
-      obstacleContainer = new pixi.Container()
       heroContainer = new pixi.Container()
 
       container.addChild(bgContainer)
       container.addChild(groundContainer)
-      container.addChild(obstacleContainer)
       container.addChild(heroContainer)
 
       // --- Sky (Graphics — gradient + sun) ---
@@ -168,22 +144,6 @@ function createRunnerLocation() {
       groundOverlay = new pixi.Graphics()
       groundContainer.addChild(groundOverlay)
 
-      // --- Obstacle sprite pool ---
-      obstacleSprites = []
-      obstacleShadows = []
-      for (let i = 0; i < MAX_OBSTACLES; i++) {
-        const shadow = new pixi.Graphics()
-        shadow.visible = false
-        obstacleContainer.addChild(shadow)
-        obstacleShadows.push(shadow)
-
-        const sprite = new pixi.Sprite()
-        sprite.anchor.set(0.5, 1.0)
-        sprite.visible = false
-        obstacleContainer.addChild(sprite)
-        obstacleSprites.push(sprite)
-      }
-
       // --- Hero shadow ---
       heroShadow = new pixi.Graphics()
       heroContainer.addChild(heroShadow)
@@ -212,7 +172,6 @@ function createRunnerLocation() {
       // Preload assets in background
       preloadAll()
         .then(() => {
-          assetsReady = true
           _refreshTilingScales()
         })
         .catch(err => console.warn('[RunnerLocation] Asset preload failed:', err))
@@ -222,20 +181,10 @@ function createRunnerLocation() {
       if (!container) return
 
       const now = performance.now()
-      const beatCount = Math.floor(beatsFromStart)
-
-      // Auto-stumble logic
-      if (beatCount > prevBeatCount && prevBeatCount >= 0) {
-        if (!hitThisBeat && beatCount > LEAD_IN_BEATS && charState === 'running') {
-          _startStumble(now)
-        }
-        hitThisBeat = false
-      }
-      prevBeatCount = beatCount
 
       _updateCharacterState(now)
 
-      const worldOffset = beatsFromStart * obstacleSpacing
+      const worldOffset = beatsFromStart * scrollStep
 
       // --- Update TilingSprites (no clear/redraw needed) ---
       if (bgTiling) {
@@ -253,9 +202,6 @@ function createRunnerLocation() {
       _drawClouds(cloudsGraphics, beatsFromStart)
       _drawGrassOverlay(groundOverlay, beatsFromStart)
 
-      // --- Update obstacles ---
-      _updateObstacles(beatsFromStart)
-
       // --- Update hero ---
       const pose = _computePose(now, phase)
       _updateHero(pose)
@@ -271,9 +217,6 @@ function createRunnerLocation() {
       if (!container) return
 
       const now = performance.now()
-      hitThisBeat = true
-
-      if (charState !== 'running') return
 
       if (zone === 'perfect') {
         charState = 'jumping'
@@ -299,6 +242,7 @@ function createRunnerLocation() {
       }
 
       if (zone === 'miss') {
+        if (charState === 'stumbling') return
         _startStumble(now)
       }
     },
@@ -319,14 +263,8 @@ function createRunnerLocation() {
       if (groundOverlay) groundOverlay.destroy()
       if (effectsGraphics) effectsGraphics.destroy()
 
-      for (let i = 0; i < obstacleSprites.length; i++) {
-        obstacleSprites[i].destroy(destroyOpts)
-        obstacleShadows[i].destroy()
-      }
-
       if (bgContainer) bgContainer.destroy()
       if (groundContainer) groundContainer.destroy()
-      if (obstacleContainer) obstacleContainer.destroy()
       if (heroContainer) heroContainer.destroy()
 
       container = null
@@ -335,11 +273,10 @@ function createRunnerLocation() {
       minSide = 0
       groundY = 0
       charX = 0
-      obstacleSpacing = 0
+      scrollStep = 0
 
       bgContainer = null
       groundContainer = null
-      obstacleContainer = null
       heroContainer = null
       skyGraphics = null
       cloudsGraphics = null
@@ -350,16 +287,12 @@ function createRunnerLocation() {
       dirtTiling = null
       heroSprite = null
       heroShadow = null
-      obstacleSprites = []
-      obstacleShadows = []
 
-      obstacles = []
       particles = []
       effects = []
       grassTufts = []
       clouds = []
 
-      assetsReady = false
       _resetState()
     }
   }
@@ -370,7 +303,7 @@ function createRunnerLocation() {
     grassTufts = []
     for (let i = 0; i < GRASS_TUFT_COUNT; i++) {
       grassTufts.push({
-        offset: (i / GRASS_TUFT_COUNT) * obstacleSpacing * 2.5,
+        offset: (i / GRASS_TUFT_COUNT) * scrollStep * 2.5,
         h: minSide * (0.018 + (i % 4) * 0.007),
         lean: (i % 2 === 0 ? 1 : -1) * minSide * 0.006,
         alpha: 0.55 + (i % 3) * 0.12
@@ -419,11 +352,6 @@ function createRunnerLocation() {
   }
 
   function _initPools() {
-    obstacles = []
-    for (let i = 0; i < MAX_OBSTACLES; i++) {
-      obstacles.push({ active: false, beatIndex: 0, type: 0 })
-    }
-
     particles = []
     for (let i = 0; i < MAX_PARTICLES; i++) {
       particles.push({
@@ -444,8 +372,6 @@ function createRunnerLocation() {
     charStateStart = 0
     charJumpHeight = 0
     currentAnim = 'run'
-    prevBeatCount = -1
-    hitThisBeat = false
   }
 
   function _startStumble(now) {
@@ -535,54 +461,6 @@ function createRunnerLocation() {
     }
   }
 
-  function _updateObstacles(beatsFromStart) {
-    const assets = getTextures()
-    const firstVisible = Math.floor(beatsFromStart - 1)
-    const lastVisible = Math.ceil(beatsFromStart + width / obstacleSpacing + 2)
-
-    let poolIdx = 0
-    for (let bi = Math.max(LEAD_IN_BEATS + 1, firstVisible); bi <= lastVisible && poolIdx < MAX_OBSTACLES; bi++) {
-      const x = charX + (bi - beatsFromStart) * obstacleSpacing
-      if (x < -minSide * 0.12 || x > width + minSide * 0.12) continue
-
-      const obs = obstacles[poolIdx]
-      obs.active = true
-      obs.beatIndex = bi
-      obs.type = (bi * 7 + 3) % 4
-
-      const mapping = OBSTACLE_MAP[obs.type]
-      const sprite = obstacleSprites[poolIdx]
-      const shadow = obstacleShadows[poolIdx]
-      const tex = assets[mapping.key]
-
-      sprite.texture = tex
-      const targetH = minSide * mapping.targetMul
-      const texH = tex.height || 64
-      const scale = targetH / texH
-      sprite.scale.set(scale, scale)
-      sprite.x = x
-      sprite.y = groundY
-      sprite.visible = true
-
-      // Shadow
-      shadow.clear()
-      shadow.beginFill(0x000000, 0.18)
-      const sr = minSide * 0.04
-      shadow.drawEllipse(x, groundY + sr * 0.22, sr * 1.3, sr * 0.4)
-      shadow.endFill()
-      shadow.visible = true
-
-      poolIdx++
-    }
-
-    // Hide unused pool entries
-    for (let i = poolIdx; i < MAX_OBSTACLES; i++) {
-      obstacles[i].active = false
-      obstacleSprites[i].visible = false
-      obstacleShadows[i].visible = false
-    }
-  }
-
   // ============ Graphics draw functions ============
 
   function _drawSky(g, phase) {
@@ -642,7 +520,7 @@ function createRunnerLocation() {
 
     for (let i = 0; i < clouds.length; i++) {
       const c = clouds[i]
-      const x = ((c.x - beatsFromStart * obstacleSpacing * c.speed) % (width + c.w * 2) + (width + c.w * 2)) % (width + c.w * 2) - c.w
+      const x = ((c.x - beatsFromStart * scrollStep * c.speed) % (width + c.w * 2) + (width + c.w * 2)) % (width + c.w * 2) - c.w
 
       g.beginFill(0xFFFFFF, c.alpha)
       g.drawEllipse(x, c.y, c.w, c.h)
@@ -656,8 +534,8 @@ function createRunnerLocation() {
     if (!g) return
     g.clear()
 
-    const worldOffset = beatsFromStart * obstacleSpacing
-    const tileWidth = obstacleSpacing * 2.5
+    const worldOffset = beatsFromStart * scrollStep
+    const tileWidth = scrollStep * 2.5
 
     for (let i = 0; i < grassTufts.length; i++) {
       const tuft = grassTufts[i]

@@ -1,7 +1,7 @@
 {
   "project": "Beat Buddy",
-  "version": "2.0.0",
-  "last_updated": "2026-02-07",
+  "version": "2.1.0",
+  "last_updated": "2026-02-09",
   "branchName": "main",
   "userStories": [
     {
@@ -270,6 +270,80 @@
       "passes": false,
       "technicalNotes": "Модуль ForestLocation.js реализует интерфейс локации. Ассеты: либо процедурная графика (PixiJS Graphics), либо простые спрайты (SVG/PNG). Для MVP локации лучше начать с процедурной графики — проще, нет зависимости от ассетов. Частицы для эффектов при perfect-ударах.",
       "relatedFiles": ["src/web/js/locations/ForestLocation.js"]
+    },
+    {
+      "id": "US-016",
+      "phase": "v2.1",
+      "title": "Runner без препятствий как основного фокуса",
+      "description": "Как ребёнок я хочу, чтобы в раннере всё зависело от моего попадания в ритм, чтобы не путаться из-за лишних препятствий",
+      "acceptanceCriteria": [
+        "В RunnerLocation убраны препятствия как ключевой визуальный и игровой элемент",
+        "Прыжок запускается только по результату попадания в бит (perfect/good)",
+        "Спотыкание запускается только по miss",
+        "Авто-спотыкание/внешние триггеры, не связанные с ритмом, отключены",
+        "Сцена остаётся визуально живой без препятствий (фон, бег, эффекты)",
+        "RhythmAnalyzer и подсчёт статистики работают без изменений",
+        "Производительность и стабильность не хуже текущей версии"
+      ],
+      "priority": 16,
+      "passes": true,
+      "technicalNotes": "RunnerLocation переведён на чистый ритм-фидбек: obstacle-pool и auto-stumble удалены. Прыжок срабатывает только на perfect/good, спотыкание — только на miss. Логика RhythmAnalyzer и подсчёт статистики не изменялись.",
+      "relatedFiles": ["src/web/js/locations/RunnerLocation.js"]
+    },
+    {
+      "id": "US-017",
+      "phase": "v2.1",
+      "title": "Счётчик streak успешных попаданий",
+      "description": "Как ребёнок я хочу видеть серию удачных попаданий, чтобы чувствовать прогресс прямо во время сессии",
+      "acceptanceCriteria": [
+        "UI показывает текущий streak на Session Screen",
+        "Streak увеличивается на +1 при perfect и good",
+        "Streak сбрасывается в 0 при miss",
+        "Отдельно отображается лучший streak за сессию",
+        "Появляется заметный эффект при достижении порогов (например 5/10/20)",
+        "Логика streak не ломает существующую статистику по зонам",
+        "Streak корректно сбрасывается при старте новой сессии"
+      ],
+      "priority": 17,
+      "passes": false,
+      "technicalNotes": "Добавить Session UI-элемент для combo и best combo. Обновлять состояние в app.js после recordHit(). При желании прокидывать streak в Animator для усиления эффектов.",
+      "relatedFiles": ["src/web/js/app.js", "src/web/index.html", "src/web/styles/main.css", "src/web/js/Animator.js"]
+    },
+    {
+      "id": "US-018",
+      "phase": "v2.1",
+      "title": "Короткие реплики динозавра на события ритма",
+      "description": "Как ребёнок я хочу, чтобы динозавр говорил короткие фразы при успехе и ошибках, чтобы сессия была эмоциональнее",
+      "acceptanceCriteria": [
+        "При successful hit (perfect/good) показывается позитивная реплика",
+        "При miss показывается отдельная реплика поддержки/реакции",
+        "Реплики выбираются случайно из набора, без повторов подряд",
+        "Реплика читаема и не перекрывает критичный UI",
+        "Показ реплики имеет короткий TTL и плавное исчезновение",
+        "Реплики можно отключить флагом/конфигом для быстрых A/B тестов"
+      ],
+      "priority": 18,
+      "passes": false,
+      "technicalNotes": "Реализовать speech bubble/overlay в RunnerLocation или поверх Session UI. Добавить словари фраз по зонам. Ввести защиту от спама (cooldown на показ).",
+      "relatedFiles": ["src/web/js/locations/RunnerLocation.js", "src/web/styles/main.css", "src/web/js/app.js"]
+    },
+    {
+      "id": "US-019",
+      "phase": "v2.1",
+      "title": "Полноэкранные edge-вспышки по зонам точности",
+      "description": "Как ребёнок я хочу видеть яркую вспышку по краям экрана при каждом ударе, чтобы мгновенно понимать качество попадания",
+      "acceptanceCriteria": [
+        "Вместо слабых локальных волн используется edge-вспышка по периметру экрана",
+        "perfect = зелёная вспышка, good = жёлтая, miss = красная",
+        "Интенсивность и длительность эффекта различаются по зонам",
+        "Эффект не ухудшает читаемость таймера и streak-индикатора",
+        "Эффект отрабатывает каждый hit без заметного лагa",
+        "Есть fallback на менее тяжёлый вариант эффекта при низком FPS"
+      ],
+      "priority": 19,
+      "passes": false,
+      "technicalNotes": "Сделать слой edge-overlay (PixiJS graphics/filter или CSS overlay) на уровне Session контейнера. Центр экрана оставить чистым, акцент по границам. Поддержать degrade для слабого GPU.",
+      "relatedFiles": ["src/web/js/Animator.js", "src/web/js/locations/RunnerLocation.js", "src/web/styles/main.css", "src/web/index.html"]
     }
   ]
 }
