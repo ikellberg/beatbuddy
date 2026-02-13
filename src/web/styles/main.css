@@ -255,23 +255,30 @@ select:focus {
    ============================================ */
 #session-screen {
   min-height: 100vh;
+  height: 100dvh;
   background: linear-gradient(135deg, var(--session-bg-start), var(--session-bg-end));
-  padding: 32px 20px;
+  padding: clamp(10px, 1.8vh, 20px) clamp(10px, 1.6vw, 20px);
+  display: flex;
+  align-items: stretch;
 }
 
 .session-layout {
-  max-width: 560px;
+  width: min(96vw, 1000px);
+  max-width: 1000px;
+  height: calc(100dvh - clamp(20px, 3.6vh, 40px));
+  max-height: calc(100dvh - clamp(20px, 3.6vh, 40px));
+  min-height: 0;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: clamp(6px, 1vh, 12px);
   position: relative;
 }
 
 /* Timer */
 .timer {
-  font-size: 5rem;
+  font-size: clamp(2.1rem, 7.2vh, 4.8rem);
   font-weight: 900;
   color: #fff;
   text-align: center;
@@ -286,7 +293,7 @@ select:focus {
   justify-content: center;
   flex-direction: column;
   gap: 6px;
-  font-size: 3rem;
+  font-size: clamp(1.35rem, 4.6vh, 2.8rem);
   font-weight: 900;
   color: #FFD54F;
   text-align: center;
@@ -319,7 +326,7 @@ select:focus {
 
 .streak-best {
   display: inline-block;
-  font-size: 1rem;
+  font-size: clamp(0.82rem, 1.8vh, 1rem);
   font-weight: 700;
   opacity: 0.75;
 }
@@ -329,8 +336,8 @@ select:focus {
 }
 
 .speech-bubble {
-  min-height: 64px;
-  max-width: min(520px, 92vw);
+  min-height: clamp(32px, 5.2vh, 52px);
+  max-width: min(640px, 92vw);
   width: 100%;
   display: flex;
   align-items: center;
@@ -428,19 +435,19 @@ select:focus {
 /* Threshold effects */
 .streak-5 {
   color: #FFEB3B;
-  font-size: 3.5rem;
+  font-size: clamp(1.5rem, 5vh, 3.2rem);
   text-shadow: 0 0 16px rgba(255, 235, 59, 0.6);
 }
 
 .streak-10 {
   color: #FF9800;
-  font-size: 4rem;
+  font-size: clamp(1.65rem, 5.4vh, 3.5rem);
   text-shadow: 0 0 20px rgba(255, 152, 0, 0.7);
 }
 
 .streak-20 {
   color: #FF5722;
-  font-size: 4.5rem;
+  font-size: clamp(1.85rem, 6vh, 3.9rem);
   text-shadow: 0 0 28px rgba(255, 87, 34, 0.8);
   animation: streak-pulse 0.6s ease-in-out infinite;
 }
@@ -472,7 +479,10 @@ select:focus {
 #rhythm-canvas {
   display: block;
   width: 100%;
-  height: 400px;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: auto;
+  margin-bottom: clamp(10px, 1.8vh, 18px);
   border-radius: 20px;
   box-shadow: 0 0 24px rgba(255, 255, 255, 0.15);
 }
@@ -484,7 +494,12 @@ select:focus {
 
 /* Session buttons */
 #session-screen .primary-button {
+  width: min(320px, 100%);
   max-width: 320px;
+  height: clamp(50px, 7.4vh, 68px);
+  margin-top: clamp(2px, 0.6vh, 8px);
+  flex-shrink: 0;
+  font-size: clamp(1.15rem, 2.6vh, 1.5rem);
 }
 
 /* ============================================
@@ -642,7 +657,7 @@ select:focus {
   }
 
   .timer {
-    font-size: 4rem;
+    font-size: clamp(1.9rem, 6.5vh, 3.2rem);
   }
 
   h1 {
@@ -651,6 +666,44 @@ select:focus {
 }
 
 /* Large screens */
+@media (max-height: 820px) {
+  #session-screen {
+    padding: 10px;
+  }
+
+  .session-layout {
+    height: calc(100dvh - 20px);
+    max-height: calc(100dvh - 20px);
+    gap: 6px;
+  }
+
+  .timer {
+    font-size: clamp(1.8rem, 6vh, 3.1rem);
+  }
+
+  .streak {
+    font-size: clamp(1.2rem, 3.8vh, 2.1rem);
+  }
+
+  .speech-bubble {
+    min-height: 28px;
+  }
+
+  #rhythm-canvas {
+    border-radius: 16px;
+  }
+
+  #session-screen .primary-button {
+    height: 46px;
+    font-size: 1.1rem;
+    border-radius: 16px;
+  }
+}
+@media (max-height: 680px) {
+  .streak-best {
+    display: none;
+  }
+}
 @media (min-width: 1200px) {
   .card {
     max-width: 540px;
@@ -661,7 +714,7 @@ select:focus {
   }
 
   .session-layout {
-    max-width: 700px;
+    max-width: 1000px;
   }
 }
 
