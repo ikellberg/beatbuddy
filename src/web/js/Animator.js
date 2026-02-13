@@ -193,9 +193,12 @@ export class Animator {
     } catch (error) {
       console.error(`[Animator] Ошибка инициализации PixiJS (попытка ${this._initRetries + 1}):`, error)
 
+      // Конструктор мог создать WebGL контекст до падения — освободить слот.
+      this._loseWebGLContext()
+
       if (this._initRetries < maxRetries) {
         this._initRetries++
-        const delayMs = this._initRetries * 300
+        const delayMs = this._initRetries * 500
         console.log(`[Animator] Повторная попытка через ${delayMs}ms...`)
         this._retryTimer = setTimeout(() => {
           this._retryTimer = null
@@ -258,5 +261,24 @@ export class Animator {
       baseTexture: false
     })
     this.pixiApp = null
+
+    // Явно освободить WebGL контекст, чтобы не исчерпать лимит браузера (~8-16).
+    this._loseWebGLContext()
+  }
+
+  /**
+   * Принудительно освобождает WebGL контекст на canvas.
+   * Без этого браузер может не переиспользовать слот,
+   * и после нескольких start/stop gl.getParameter() начнёт возвращать 0.
+   */
+  _loseWebGLContext() {
+    if (!this.canvas) return
+    const gl = this.canvas.getContext('webgl2') || this.canvas.getContext('webgl')
+    if (!gl) return
+    const ext = gl.getExtension('WEBGL_lose_context')
+    if (ext) {
+      ext.loseContext()
+      console.log('[Animator] WebGL контекст явно освобождён')
+    }
   }
 }
