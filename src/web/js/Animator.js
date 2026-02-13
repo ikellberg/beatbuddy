@@ -11,13 +11,14 @@ import './locations/RunnerLocation.js'
 
 export class Animator {
   /**
-   * @param {HTMLCanvasElement} canvasElement
+   * @param {HTMLElement} containerElement - контейнер, в который PixiJS вставит свой canvas
    * @param {number} bpm
    * @param {number|null} firstBeatTimeSec - время первого бита в шкале performance.now()/1000
    * @param {string} locationId - id локации из LocationRegistry
    */
-  constructor(canvasElement, bpm, firstBeatTimeSec = null, locationId = LocationRegistry.getDefaultId()) {
-    this.canvas = canvasElement
+  constructor(containerElement, bpm, firstBeatTimeSec = null, locationId = LocationRegistry.getDefaultId()) {
+    this.container = containerElement
+    this.canvas = null
     this.bpm = bpm
     this.firstBeatTimeSec = Number.isFinite(firstBeatTimeSec) ? firstBeatTimeSec : null
     this.locationId = locationId
@@ -140,25 +141,27 @@ export class Animator {
       return true
     }
 
-    if (!this.canvas) {
+    if (!this.container) {
       this.status = {
         ok: false,
         mode: 'fallback',
-        message: 'Анимация недоступна: canvas не найден'
+        message: 'Анимация недоступна: контейнер не найден'
       }
       return false
     }
 
-    const renderWidth = Math.max(1, Math.floor(this.canvas.clientWidth || this.canvas.width))
-    const renderHeight = Math.max(1, Math.floor(this.canvas.clientHeight || this.canvas.height))
-    if (renderWidth <= 0 || renderHeight <= 0) {
+    const rawWidth = this.container.clientWidth
+    const rawHeight = this.container.clientHeight
+    if (rawWidth <= 0 || rawHeight <= 0) {
       this.status = {
         ok: false,
         mode: 'fallback',
-        message: 'Анимация недоступна: невалидный размер canvas'
+        message: 'Анимация недоступна: невалидный размер контейнера'
       }
       return false
     }
+    const renderWidth = Math.floor(rawWidth)
+    const renderHeight = Math.floor(rawHeight)
 
     const pixi = globalThis.PIXI
     if (!pixi || !pixi.Application || !pixi.Graphics) {
@@ -171,8 +174,8 @@ export class Animator {
     }
 
     try {
+      // PixiJS сам создаёт свежий canvas — это гарантирует чистый WebGL контекст.
       this.pixiApp = new pixi.Application({
-        view: this.canvas,
         width: renderWidth,
         height: renderHeight,
         backgroundAlpha: 0,
@@ -180,6 +183,9 @@ export class Animator {
         autoDensity: true,
         resolution: Math.min(globalThis.devicePixelRatio || 1, 2)
       })
+
+      this.canvas = this.pixiApp.view
+      this.container.appendChild(this.canvas)
 
       this.canvas.addEventListener('webglcontextlost', this._onContextLost)
       this.canvas.addEventListener('webglcontextrestored', this._onContextRestored)
@@ -192,9 +198,6 @@ export class Animator {
       return true
     } catch (error) {
       console.error(`[Animator] Ошибка инициализации PixiJS (попытка ${this._initRetries + 1}):`, error)
-
-      // Конструктор мог создать WebGL контекст до падения — освободить слот.
-      this._loseWebGLContext()
 
       if (this._initRetries < maxRetries) {
         this._initRetries++
@@ -255,30 +258,18 @@ export class Animator {
     }
     this.pixiApp.ticker.remove(this._tick)
     this.pixiApp.stage.removeChildren()
-    this.pixiApp.destroy(false, {
+    // destroy(true) — PixiJS уничтожит и canvas, и WebGL контекст.
+    this.pixiApp.destroy(true, {
       children: true,
       texture: false,
       baseTexture: false
     })
     this.pixiApp = null
 
-    // Явно освободить WebGL контекст, чтобы не исчерпать лимит браузера (~8-16).
-    this._loseWebGLContext()
-  }
-
-  /**
-   * Принудительно освобождает WebGL контекст на canvas.
-   * Без этого браузер может не переиспользовать слот,
-   * и после нескольких start/stop gl.getParameter() начнёт возвращать 0.
-   */
-  _loseWebGLContext() {
-    if (!this.canvas) return
-    const gl = this.canvas.getContext('webgl2') || this.canvas.getContext('webgl')
-    if (!gl) return
-    const ext = gl.getExtension('WEBGL_lose_context')
-    if (ext) {
-      ext.loseContext()
-      console.log('[Animator] WebGL контекст явно освобождён')
+    // Удалить canvas из DOM (если PixiJS не сделал это сам).
+    if (this.canvas && this.canvas.parentNode) {
+      this.canvas.parentNode.removeChild(this.canvas)
     }
+    this.canvas = null
   }
 }

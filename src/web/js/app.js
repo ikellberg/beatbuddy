@@ -415,12 +415,12 @@ async function onStartClick() {
   console.log(`[App] RhythmAnalyzer создан: startTime=${firstBeatTime.toFixed(3)}s, thresholds: perfect=±75ms, good=±150ms`)
 
   // Создать и запустить аниматор
-  const canvas = document.getElementById('rhythm-canvas')
-  if (!canvas) {
-    console.error('[App] Canvas не найден')
+  const canvasContainer = document.getElementById('rhythm-canvas-container')
+  if (!canvasContainer) {
+    console.error('[App] Canvas container не найден')
     return
   }
-  animator = new Animator(canvas, settings.bpm, firstBeatTime, settings.locationId)
+  animator = new Animator(canvasContainer, settings.bpm, firstBeatTime, settings.locationId)
   animator.start()
   window.__debugAnimator = settings.devMode ? animator : null
   const animatorStatus = typeof animator.getStatus === 'function'

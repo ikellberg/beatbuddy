@@ -475,8 +475,8 @@ select:focus {
   }
 }
 
-/* Canvas */
-#rhythm-canvas {
+/* Canvas container */
+#rhythm-canvas-container {
   display: block;
   width: 100%;
   flex: 1 1 0%;
@@ -485,6 +485,13 @@ select:focus {
   margin-bottom: clamp(10px, 1.8vh, 18px);
   border-radius: 20px;
   box-shadow: 0 0 24px rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+#rhythm-canvas-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* Metronome indicator — скрыт, не несёт ценности для ребёнка/педагога */
@@ -689,7 +696,7 @@ select:focus {
     min-height: 28px;
   }
 
-  #rhythm-canvas {
+  #rhythm-canvas-container {
     border-radius: 16px;
   }
 
