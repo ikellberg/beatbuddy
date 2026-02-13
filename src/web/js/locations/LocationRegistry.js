@@ -38,7 +38,7 @@ export function getAll() {
 export function create(id) {
   const entry = registry.get(id)
   if (!entry) {
-    console.error(`[LocationRegistry] Локация "${id}" не найдена, fallback на "${getDefaultId()}"`)
+    console.warn(`[LocationRegistry] Локация "${id}" не найдена, fallback на "${getDefaultId()}"`)
     const fallback = registry.get(getDefaultId())
     if (!fallback) {
       throw new Error(`[LocationRegistry] Нет зарегистрированных локаций`)

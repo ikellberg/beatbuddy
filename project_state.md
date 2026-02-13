@@ -15,7 +15,6 @@ Animator (владеет PixiJS App, ticker, lifecycle)
 
 LocationRegistry — реестр локаций (register/getAll/create)
 DefaultLocation — пульс + flash (бывший визуал из Animator)
-ForestLocation — лесная сцена (деревья, цветы, бабочки, эффекты ударов)
 RunnerLocation (V2.1) — side-scrolling ритм-раннер без obstacle-driven фидбека: прыжок только на perfect/good, спотыкание только на miss
 RunnerAssets — манифест + кэш текстур для RunnerLocation (shared, не уничтожаются при stop/start)
 DinoPhrases — общий словарь реплик и helper выбора без мгновенного повтора (используется в app overlay и Runner thought-bubble)

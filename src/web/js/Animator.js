@@ -7,7 +7,6 @@
 import * as LocationRegistry from './locations/LocationRegistry.js'
 // Импорт DefaultLocation для side-effect: регистрация в реестре.
 import './locations/DefaultLocation.js'
-import './locations/ForestLocation.js'
 import './locations/RunnerLocation.js'
 
 export class Animator {
