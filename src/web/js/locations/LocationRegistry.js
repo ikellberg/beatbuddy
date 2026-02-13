@@ -5,7 +5,9 @@
  * UI получает список через getAll(), Animator создаёт экземпляр через create().
  */
 
-/** @type {Map<string, {id: string, name: string, createFn: () => object}>} */
+/** @typedef {'overlay' | 'in-canvas'} SpeechMode */
+
+/** @type {Map<string, {id: string, name: string, createFn: () => object, speechMode: SpeechMode}>} */
 const registry = new Map()
 
 /**
@@ -13,12 +15,15 @@ const registry = new Map()
  * @param {string} id - уникальный идентификатор
  * @param {string} name - отображаемое имя для UI
  * @param {() => object} createFn - фабрика, возвращающая объект локации
+ * @param {{speechMode?: SpeechMode}} [options]
  */
-export function register(id, name, createFn) {
+export function register(id, name, createFn, options = {}) {
   if (registry.has(id)) {
     console.warn(`[LocationRegistry] Локация "${id}" уже зарегистрирована, перезаписываем`)
   }
-  registry.set(id, { id, name, createFn })
+
+  const speechMode = options.speechMode === 'in-canvas' ? 'in-canvas' : 'overlay'
+  registry.set(id, { id, name, createFn, speechMode })
   console.log(`[LocationRegistry] Зарегистрирована: "${id}" (${name})`)
 }
 
@@ -41,11 +46,24 @@ export function create(id) {
     console.warn(`[LocationRegistry] Локация "${id}" не найдена, fallback на "${getDefaultId()}"`)
     const fallback = registry.get(getDefaultId())
     if (!fallback) {
-      throw new Error(`[LocationRegistry] Нет зарегистрированных локаций`)
+      throw new Error('[LocationRegistry] Нет зарегистрированных локаций')
     }
     return fallback.createFn()
   }
   return entry.createFn()
+}
+
+/**
+ * Режим показа реплик для указанной локации.
+ * @param {string} id
+ * @returns {SpeechMode}
+ */
+export function getSpeechMode(id) {
+  const entry = registry.get(id)
+  if (entry) return entry.speechMode
+
+  const fallback = registry.get(getDefaultId())
+  return fallback ? fallback.speechMode : 'overlay'
 }
 
 /**

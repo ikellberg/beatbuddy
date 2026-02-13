@@ -2,7 +2,7 @@ import { MetronomeEngine } from './MetronomeEngine.js'
 import { SensorManager } from './SensorManager.js'
 import { RhythmAnalyzer } from './RhythmAnalyzer.js'
 import { Animator } from './Animator.js'
-import { DINO_PHRASES, pickPhraseWithoutImmediateRepeat } from './DinoPhrases.js'
+import { SpeechService } from './SpeechService.js'
 import * as LocationRegistry from './locations/LocationRegistry.js'
 
 // Ключи localStorage
@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
   duration: 5,
   devMode: false,
   locationId: LocationRegistry.getDefaultId(),
-  dinoSpeechEnabled: true
+  speechEnabled: true
 }
 
 // Элементы UI
@@ -58,18 +58,11 @@ let streakValue = null
 let streakBestValue = null
 let committedBestStreak = 0
 
-// Dino speech bubble
-let dinoSpeech = null
-let dinoSpeechText = null
-let dinoSpeechEnabled = DEFAULT_SETTINGS.dinoSpeechEnabled
-let dinoSpeechLastShownAt = 0
-let dinoSpeechLastByGroup = { positive: '', miss: '' }
-let dinoSpeechFadeTimeout = null
-let dinoSpeechHideTimeout = null
-
-const DINO_SPEECH_COOLDOWN_MS = 420
-const DINO_SPEECH_TTL_MS = 1100
-const DINO_SPEECH_FADE_MS = 220
+// Speech bubble
+let speechBubble = null
+let speechBubbleText = null
+let speechEnabled = DEFAULT_SETTINGS.speechEnabled
+let speech = null
 
 // Таймер занятия
 let timerDisplay = null
@@ -113,8 +106,9 @@ function init() {
   streakDisplay = document.getElementById('streak-display')
   streakValue = document.getElementById('streak-value')
   streakBestValue = document.getElementById('streak-best-value')
-  dinoSpeech = document.getElementById('dino-speech')
-  dinoSpeechText = document.getElementById('dino-speech-text')
+  speechBubble = document.getElementById('speech-bubble')
+  speechBubbleText = document.getElementById('speech-bubble-text')
+  speech = new SpeechService({ bubbleEl: speechBubble, textEl: speechBubbleText })
 
   // Получить элемент таймера
   timerDisplay = document.getElementById('timer-display')
@@ -158,7 +152,8 @@ function loadSettings() {
     locationSelect.value = settings.locationId || LocationRegistry.getDefaultId()
   }
   // Default-on behavior for backward compatibility with old localStorage shape.
-  dinoSpeechEnabled = settings.dinoSpeechEnabled !== false
+  speechEnabled = settings.speechEnabled !== false && settings.dinoSpeechEnabled !== false
+  speech?.setEnabled(speechEnabled)
 
   console.log('[App] Настройки загружены:', settings)
 }
@@ -172,7 +167,7 @@ function saveSettings() {
     duration: parseInt(durationInput.value, 10),
     devMode: devModeCheckbox.checked,
     locationId: locationSelect ? locationSelect.value : LocationRegistry.getDefaultId(),
-    dinoSpeechEnabled
+    speechEnabled
   }
 
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
@@ -321,62 +316,6 @@ function onTimerTick() {
 /** Пороги streak для визуальных эффектов */
 const STREAK_THRESHOLDS = [20, 10, 5]
 
-function clearDinoSpeechTimers() {
-  if (dinoSpeechFadeTimeout) {
-    clearTimeout(dinoSpeechFadeTimeout)
-    dinoSpeechFadeTimeout = null
-  }
-  if (dinoSpeechHideTimeout) {
-    clearTimeout(dinoSpeechHideTimeout)
-    dinoSpeechHideTimeout = null
-  }
-}
-
-function resetDinoSpeech() {
-  clearDinoSpeechTimers()
-  dinoSpeechLastShownAt = 0
-  if (!dinoSpeech || !dinoSpeechText) return
-  dinoSpeechText.textContent = ''
-  dinoSpeech.classList.remove('dino-speech--positive', 'dino-speech--miss', 'dino-speech--fade-out')
-  dinoSpeech.classList.add('dino-speech--hidden')
-}
-
-function pickDinoPhrase(group) {
-  const phrases = DINO_PHRASES[group]
-  if (!phrases || phrases.length === 0) return ''
-  const next = pickPhraseWithoutImmediateRepeat(phrases, dinoSpeechLastByGroup[group] || '')
-  dinoSpeechLastByGroup[group] = next
-  return next
-}
-
-function showDinoSpeech(zone) {
-  if (!dinoSpeechEnabled || !dinoSpeech || !dinoSpeechText) return
-
-  const now = performance.now()
-  if (now - dinoSpeechLastShownAt < DINO_SPEECH_COOLDOWN_MS) return
-  dinoSpeechLastShownAt = now
-
-  const group = zone === 'miss' ? 'miss' : 'positive'
-  const text = pickDinoPhrase(group)
-  if (!text) return
-
-  clearDinoSpeechTimers()
-  dinoSpeechText.textContent = text
-  dinoSpeech.classList.remove('dino-speech--hidden', 'dino-speech--fade-out', 'dino-speech--positive', 'dino-speech--miss')
-  dinoSpeech.classList.add(group === 'miss' ? 'dino-speech--miss' : 'dino-speech--positive')
-
-  dinoSpeechFadeTimeout = setTimeout(() => {
-    dinoSpeech?.classList.add('dino-speech--fade-out')
-  }, DINO_SPEECH_TTL_MS - DINO_SPEECH_FADE_MS)
-
-  dinoSpeechHideTimeout = setTimeout(() => {
-    if (!dinoSpeech || !dinoSpeechText) return
-    dinoSpeech.classList.add('dino-speech--hidden')
-    dinoSpeech.classList.remove('dino-speech--fade-out', 'dino-speech--positive', 'dino-speech--miss')
-    dinoSpeechText.textContent = ''
-  }, DINO_SPEECH_TTL_MS)
-}
-
 /**
  * Обновить streak-дисплей на Session Screen
  * @param {number} streak - текущий streak
@@ -439,7 +378,7 @@ async function onStartClick() {
   sessionScreen.style.display = 'block'
   committedBestStreak = 0
   updateStreakDisplay(0, 0)
-  resetDinoSpeech()
+  speech?.reset()
 
   // === ОБРАТНЫЙ ОТСЧЁТ 3-2-1 ===
   const countdownCompleted = await countdown(3)
@@ -501,6 +440,8 @@ async function onStartClick() {
   const sensorType = SensorManager.getTypeFromSettings(settings.devMode)
   sensor = SensorManager.create(sensorType)
 
+  const locationSpeechMode = LocationRegistry.getSpeechMode(settings.locationId)
+
   sensor.onHit((event) => {
     console.log(`[App] Hit received: ${event.timestamp.toFixed(2)}ms from ${event.source}`)
 
@@ -527,10 +468,8 @@ async function onStartClick() {
         committedBestStreak = Math.max(committedBestStreak, stats.bestStreak)
       }
       updateStreakDisplay(stats.streak, committedBestStreak, stats.misses)
-      // Runner draws in-canvas speech near the hero; overlay speech is for other locations.
-      // `settings.locationId` is fixed for the current session lifecycle.
-      if (settings.locationId !== 'runner') {
-        showDinoSpeech(result.zone)
+      if (locationSpeechMode === 'overlay') {
+        speech?.showForZone(result.zone)
       }
 
       // Логировать текущую статистику каждые 10 ударов
@@ -576,7 +515,7 @@ function onStopClick() {
     clearInterval(sessionTimerInterval)
     sessionTimerInterval = null
   }
-  resetDinoSpeech()
+  speech?.reset()
 
   // Собрать статистику ДО обнуления rhythmAnalyzer
   let stats = { totalStrikes: 0, perfectHits: 0, goodHits: 0, misses: 0, streak: 0, bestStreak: 0 }
@@ -639,7 +578,7 @@ function onStopClick() {
  * Обработчик клика на кнопку "Новое занятие"
  */
 function onNewSessionClick() {
-  resetDinoSpeech()
+  speech?.reset()
   statsScreen.style.display = 'none'
   setupScreen.style.display = 'block'
   console.log('[App] Возврат в Setup Screen')

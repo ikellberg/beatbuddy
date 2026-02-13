@@ -9,7 +9,7 @@
 
 import { register } from './LocationRegistry.js'
 import { getTextures, preloadAll } from './RunnerAssets.js'
-import { DINO_PHRASES, pickPhraseWithoutImmediateRepeat } from '../DinoPhrases.js'
+import { GAME_PHRASES, pickPhraseWithoutImmediateRepeat } from '../GamePhrases.js'
 
 const MAX_PARTICLES = 20
 const MAX_EFFECTS = 6
@@ -329,6 +329,7 @@ function createRunnerLocation() {
       }
     },
 
+
     destroy() {
       const destroyOpts = { texture: false, baseTexture: false }
 
@@ -484,7 +485,7 @@ function createRunnerLocation() {
   }
 
   function _pickSpeech(group) {
-    const list = DINO_PHRASES[group]
+    const list = GAME_PHRASES[group]
     if (!list || list.length === 0) return ''
     const next = pickPhraseWithoutImmediateRepeat(list, speechLastByGroup[group] || '')
     speechLastByGroup[group] = next
@@ -860,13 +861,13 @@ function createRunnerLocation() {
     speechText.alpha = alpha
     speechText.visible = true
 
-    const bubbleW = Math.min(width * 0.37, Math.max(minSide * 0.19, speechText.width + minSide * 0.09))
-    const bubbleH = Math.max(minSide * 0.085, speechText.height + minSide * 0.075)
+    const bubbleW = Math.min(width * 0.42, Math.max(minSide * 0.21, speechText.width + minSide * 0.11))
+    const bubbleH = Math.max(minSide * 0.095, speechText.height + minSide * 0.085)
     const radius = minSide * 0.018
 
     const rawX = pose.x + minSide * 0.26
     const bubbleX = Math.min(width - bubbleW * 0.5 - minSide * 0.02, Math.max(bubbleW * 0.5 + minSide * 0.02, rawX))
-    const bubbleY = Math.max(minSide * 0.06 + bubbleH * 0.5, pose.y - minSide * 0.34 - bubbleH * 0.5)
+    const bubbleY = Math.max(minSide * 0.06 + bubbleH * 0.5, pose.y - minSide * 0.37 - bubbleH * 0.5)
 
     const isMiss = speechZone === 'miss'
 
@@ -888,7 +889,7 @@ function createRunnerLocation() {
     g.endFill()
     g.lineStyle(0)
 
-    speechText.style.fill = isMiss ? 0x5A1212 : 0x1B1B1B
+    speechText.style.fill = isMiss ? 0x5A1212 : 0x143325
     speechText.scale.set(0.93 + 0.07 * fadeInAlpha)
     speechText.x = bubbleX
     speechText.y = bubbleY
@@ -1028,4 +1029,4 @@ function createRunnerLocation() {
   }
 }
 
-register('runner', 'Бегун', createRunnerLocation)
+register('runner', 'Бегун', createRunnerLocation, { speechMode: 'in-canvas' })

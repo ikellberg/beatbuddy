@@ -1,0 +1,89 @@
+import { GAME_PHRASES, pickPhraseWithoutImmediateRepeat } from './GamePhrases.js'
+
+const DEFAULT_COOLDOWN_MS = 420
+const DEFAULT_TTL_MS = 1100
+const DEFAULT_FADE_MS = 220
+
+export class SpeechService {
+  constructor({
+    bubbleEl = null,
+    textEl = null,
+    enabled = true,
+    cooldownMs = DEFAULT_COOLDOWN_MS,
+    ttlMs = DEFAULT_TTL_MS,
+    fadeMs = DEFAULT_FADE_MS
+  } = {}) {
+    this.bubbleEl = bubbleEl
+    this.textEl = textEl
+    this.enabled = enabled
+    this.cooldownMs = cooldownMs
+    this.ttlMs = ttlMs
+    this.fadeMs = fadeMs
+
+    this.lastShownAt = 0
+    this.lastByGroup = { positive: '', miss: '' }
+    this.fadeTimeout = null
+    this.hideTimeout = null
+  }
+
+  setEnabled(enabled) {
+    this.enabled = enabled !== false
+  }
+
+  showForZone(zone) {
+    if (!this.enabled || !this.bubbleEl || !this.textEl) return
+
+    const now = performance.now()
+    if (now - this.lastShownAt < this.cooldownMs) return
+    this.lastShownAt = now
+
+    const group = zone === 'miss' ? 'miss' : 'positive'
+    const text = this._pickPhrase(group)
+    if (!text) return
+
+    this._clearTimers()
+    this.textEl.textContent = text
+    this.bubbleEl.classList.remove('speech-bubble--hidden', 'speech-bubble--fade-out', 'speech-bubble--positive', 'speech-bubble--miss')
+    this.bubbleEl.classList.add(group === 'miss' ? 'speech-bubble--miss' : 'speech-bubble--positive')
+
+    this.fadeTimeout = setTimeout(() => {
+      this.bubbleEl?.classList.add('speech-bubble--fade-out')
+    }, this.ttlMs - this.fadeMs)
+
+    this.hideTimeout = setTimeout(() => {
+      if (!this.bubbleEl || !this.textEl) return
+      this.bubbleEl.classList.add('speech-bubble--hidden')
+      this.bubbleEl.classList.remove('speech-bubble--fade-out', 'speech-bubble--positive', 'speech-bubble--miss')
+      this.textEl.textContent = ''
+    }, this.ttlMs)
+  }
+
+  reset() {
+    this._clearTimers()
+    this.lastShownAt = 0
+    this.lastByGroup = { positive: '', miss: '' }
+    if (!this.bubbleEl || !this.textEl) return
+    this.textEl.textContent = ''
+    this.bubbleEl.classList.remove('speech-bubble--positive', 'speech-bubble--miss', 'speech-bubble--fade-out')
+    this.bubbleEl.classList.add('speech-bubble--hidden')
+  }
+
+  _pickPhrase(group) {
+    const phrases = GAME_PHRASES[group]
+    if (!phrases || phrases.length === 0) return ''
+    const next = pickPhraseWithoutImmediateRepeat(phrases, this.lastByGroup[group] || '')
+    this.lastByGroup[group] = next
+    return next
+  }
+
+  _clearTimers() {
+    if (this.fadeTimeout) {
+      clearTimeout(this.fadeTimeout)
+      this.fadeTimeout = null
+    }
+    if (this.hideTimeout) {
+      clearTimeout(this.hideTimeout)
+      this.hideTimeout = null
+    }
+  }
+}

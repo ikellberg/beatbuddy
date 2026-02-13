@@ -134,7 +134,6 @@ export class Animator {
 
     this.location.onHit(zone)
   }
-
   /** @param {number} maxRetries */
   _initPixi(maxRetries = 2) {
     if (this.pixiApp) {
