@@ -3,6 +3,8 @@ import { GAME_PHRASES, pickPhraseWithoutImmediateRepeat } from './GamePhrases.js
 const DEFAULT_COOLDOWN_MS = 420
 const DEFAULT_TTL_MS = 1100
 const DEFAULT_FADE_MS = 220
+const DEFAULT_MIN_SKIP = 12
+const DEFAULT_MAX_SKIP = 25
 
 export class SpeechService {
   constructor({
@@ -11,7 +13,9 @@ export class SpeechService {
     enabled = true,
     cooldownMs = DEFAULT_COOLDOWN_MS,
     ttlMs = DEFAULT_TTL_MS,
-    fadeMs = DEFAULT_FADE_MS
+    fadeMs = DEFAULT_FADE_MS,
+    minSkip = DEFAULT_MIN_SKIP,
+    maxSkip = DEFAULT_MAX_SKIP
   } = {}) {
     this.bubbleEl = bubbleEl
     this.textEl = textEl
@@ -19,11 +23,14 @@ export class SpeechService {
     this.cooldownMs = cooldownMs
     this.ttlMs = ttlMs
     this.fadeMs = fadeMs
+    this.minSkip = minSkip
+    this.maxSkip = maxSkip
 
     this.lastShownAt = 0
     this.lastByGroup = { positive: '', miss: '' }
     this.fadeTimeout = null
     this.hideTimeout = null
+    this._callsUntilNext = this._randomSkip()
   }
 
   setEnabled(enabled) {
@@ -32,6 +39,9 @@ export class SpeechService {
 
   showForZone(zone) {
     if (!this.enabled || !this.bubbleEl || !this.textEl) return
+
+    if (--this._callsUntilNext > 0) return
+    this._callsUntilNext = this._randomSkip()
 
     const now = performance.now()
     if (now - this.lastShownAt < this.cooldownMs) return
@@ -62,6 +72,7 @@ export class SpeechService {
     this._clearTimers()
     this.lastShownAt = 0
     this.lastByGroup = { positive: '', miss: '' }
+    this._callsUntilNext = this._randomSkip()
     if (!this.bubbleEl || !this.textEl) return
     this.textEl.textContent = ''
     this.bubbleEl.classList.remove('speech-bubble--positive', 'speech-bubble--miss', 'speech-bubble--fade-out')
@@ -74,6 +85,10 @@ export class SpeechService {
     const next = pickPhraseWithoutImmediateRepeat(phrases, this.lastByGroup[group] || '')
     this.lastByGroup[group] = next
     return next
+  }
+
+  _randomSkip() {
+    return this.minSkip + Math.floor(Math.random() * (this.maxSkip - this.minSkip + 1))
   }
 
   _clearTimers() {
