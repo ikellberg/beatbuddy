@@ -70,5 +70,5 @@ export function getSpeechMode(id) {
  * @returns {string} id локации по умолчанию
  */
 export function getDefaultId() {
-  return 'default'
+  return 'runner'
 }

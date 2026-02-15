@@ -116,5 +116,5 @@ function createDefaultLocation() {
   }
 }
 
-// Автоматическая регистрация при импорте модуля.
-register('default', 'По умолчанию', createDefaultLocation)
+// Скрыта из UI — оставлена как fallback (не регистрируем в реестре).
+// register('default', 'По умолчанию', createDefaultLocation)
